@@ -8,7 +8,7 @@ beautifulsoup4>=4.11.0
 lxml>=4.9.0
 
 # 向量数据库
-chromadb>=0.4.0
+chromadb==0.5.23
 
 # LLM和Embedding
 openai>=1.0.0

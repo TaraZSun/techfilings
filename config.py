@@ -38,6 +38,7 @@ DATA_DIR = "data"
 RAW_DIR = f"{DATA_DIR}/raw"
 PROCESSED_DIR = f"{DATA_DIR}/processed"
 CHUNKS_PATH = f"{PROCESSED_DIR}/chunks.json"
+CHATS_DIR = "data/chats"
 
 # OpenAI 设置
 OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"

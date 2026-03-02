@@ -7,7 +7,7 @@ import os
 import json
 import requests
 from typing import List, Dict
-
+from .system_prompt import ANSWER_PROMPT
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from modules.searcher import DocumentSearcher
@@ -48,24 +48,10 @@ class DocumentRetriever:
 
     def generate_answer(self, query: str, search_results: List[Dict]) -> str:
         if not search_results:
-            return "抱歉，没有找到相关信息。"
+            return "No relevant information found in the filings."
 
         context = self.format_sources_for_prompt(search_results)
-
-        prompt = f"""You are a financial analyst assistant helping users understand SEC filings.
-
-Answer the question based ONLY on the provided sources.
-- Be specific and cite which source you're using (e.g., "According to Source 1...")
-- If the information is not in the sources, say so clearly
-- Use numbers and specific data when available
-- Answer in the same language as the question
-
-Sources:
-{context}
-
-Question: {query}
-
-Answer:"""
+        prompt = ANSWER_PROMPT.format(context=context, query=query)
 
         try:
             response = requests.post(
@@ -80,7 +66,7 @@ Answer:"""
             )
             return response.json().get("response", "").strip()
         except Exception as e:
-            return f"[生成失败: {e}]"
+            return f"[Generation failed: {e}]"
 
     def format_citations(self, search_results: List[Dict]) -> List[Dict]:
         citations = []
