@@ -23,6 +23,10 @@ COMPANIES = {
     }
 }
 
+OLLAMA_URL = "http://localhost:11434"
+EMBEDDING_MODEL = "nomic-embed-text"
+CHAT_MODEL = "llama3.2:latest"
+
 # 要下载的文件类型
 FILING_TYPES = ["10-K", "10-Q"]
 
@@ -33,6 +37,7 @@ FILINGS_PER_TYPE = 3
 DATA_DIR = "data"
 RAW_DIR = f"{DATA_DIR}/raw"
 PROCESSED_DIR = f"{DATA_DIR}/processed"
+CHUNKS_PATH = f"{PROCESSED_DIR}/chunks.json"
 
 # OpenAI 设置
 OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
@@ -40,3 +45,7 @@ OPENAI_CHAT_MODEL = "gpt-4o-mini"
 
 # Chroma 设置
 CHROMA_PERSIST_DIR = f"{DATA_DIR}/chroma_db"
+
+
+CHUNK_SIZE = 1024
+CHUNK_OVERLAP = 64

@@ -103,6 +103,34 @@ class SECLoader:
         
         return results
     
+    def get_primary_htm(self, cik: str, accession_number: str, primary_document: str) -> str:
+        """
+        找到 filing 里真正的人类可读 HTM 文件
+        如果 primary_document 已经是正确的就直接返回
+        """
+        # XBRL 特征：文件名里有 xbrl 或者是 R1.htm 这种
+        if not any(x in primary_document.lower() for x in ['xbrl', 'r1.htm', 'r2.htm']):
+            return primary_document  # 已经是正确的
+
+        # 获取 filing 的完整文件列表
+        accession_clean = accession_number.replace("-", "")
+        cik_clean = cik.lstrip("0")
+        index_url = f"https://www.sec.gov/Archives/edgar/data/{cik_clean}/{accession_clean}/{accession_clean}-index.json"
+
+        try:
+            response = requests.get(index_url, headers=self.headers)
+            files = response.json().get("directory", {}).get("item", [])
+
+            for f in files:
+                name = f.get("name", "")
+                # 找公司名开头的 .htm 文件（如 nvda-20250126.htm）
+                if name.endswith(".htm") and not name.startswith("R") and "xbrl" not in name.lower():
+                    return name
+        except Exception as e:
+            print(f"获取文件列表失败: {e}")
+
+        return primary_document  # 找不到就用原来的
+    
     def download_filing(self, cik: str, accession_number: str, primary_document: str, save_path: str) -> bool:
         """
         下载单个filing文件
@@ -185,10 +213,17 @@ class SECLoader:
             filename = f"{ticker}_{filing['form_type']}_{filing['filing_date']}.html"
             save_path = os.path.join(RAW_DIR, ticker, filename)
             
+            # 找正确的 HTM 文件
+            primary_doc = self.get_primary_htm(
+                cik, 
+                filing["accession_number"], 
+                filing["primary_document"]
+            )
+
             success = self.download_filing(
                 cik=cik,
                 accession_number=filing["accession_number"],
-                primary_document=filing["primary_document"],
+                primary_document=primary_doc,  
                 save_path=save_path
             )
             
@@ -234,7 +269,6 @@ class SECLoader:
 def main():
     """主函数"""
     print("TechFilings - 财报下载工具")
-    print("="*50)
     
     loader = SECLoader()
     results = loader.download_all()
@@ -242,10 +276,7 @@ def main():
     # 统计结果
     success_count = sum(1 for r in results if r["download_success"])
     total_count = len(results)
-    
-    print(f"\n{'='*50}")
     print(f"下载完成: {success_count}/{total_count} 成功")
-    print(f"{'='*50}")
     
     return results
 

@@ -1,325 +1,522 @@
 """
-TechFilings - Parser 模块
-解析下载的HTML财报文件，提取结构化内容
+SEC EDGAR iXBRL Parser (10-K / 10-Q)
+
+使用 ixbrl-parse 提取结构化财务数据
+使用 BeautifulSoup 提取文字段落
+
+数据路径：
+  输入: data/raw/[公司名]/*.html
+  输出: data/processed/*_parsed.json
+
+安装依赖：
+  pip install ixbrlparse beautifulsoup4 lxml tqdm
 """
 
-import os
 import re
 import json
+import time
+import warnings
 from pathlib import Path
-from bs4 import BeautifulSoup
-from typing import List, Dict, Optional
+from dataclasses import dataclass, field
+from typing import Optional
 
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import RAW_DIR, PROCESSED_DIR
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+from tqdm import tqdm
 
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
-# 10-K和10-Q的标准章节
-SEC_ITEMS = {
-    "10-K": [
-        ("Item 1", "Business"),
-        ("Item 1A", "Risk Factors"),
-        ("Item 1B", "Unresolved Staff Comments"),
-        ("Item 2", "Properties"),
-        ("Item 3", "Legal Proceedings"),
-        ("Item 4", "Mine Safety Disclosures"),
-        ("Item 5", "Market for Registrant's Common Equity"),
-        ("Item 6", "Selected Financial Data"),
-        ("Item 7", "Management's Discussion and Analysis"),
-        ("Item 7A", "Quantitative and Qualitative Disclosures About Market Risk"),
-        ("Item 8", "Financial Statements"),
-        ("Item 9", "Changes in and Disagreements with Accountants"),
-        ("Item 9A", "Controls and Procedures"),
-        ("Item 9B", "Other Information"),
-        ("Item 10", "Directors, Executive Officers and Corporate Governance"),
-        ("Item 11", "Executive Compensation"),
-        ("Item 12", "Security Ownership"),
-        ("Item 13", "Certain Relationships and Related Transactions"),
-        ("Item 14", "Principal Accountant Fees and Services"),
-        ("Item 15", "Exhibits and Financial Statement Schedules"),
+# ─────────────────────────────────────────────
+# 路径配置
+# ─────────────────────────────────────────────
+
+DATA_DIR = "data"
+RAW_DIR = f"{DATA_DIR}/raw"
+PROCESSED_DIR = f"{DATA_DIR}/processed"
+
+# US-GAAP 指标名 → 人类可读名称
+GAAP_LABELS = {
+    "RevenueFromContractWithCustomerExcludingAssessedTax": "Revenue",
+    "Revenues": "Revenue",
+    "NetIncomeLoss": "Net Income",
+    "OperatingIncomeLoss": "Operating Income",
+    "GrossProfit": "Gross Profit",
+    "CostsAndExpenses": "Total Costs and Expenses",
+    "ResearchAndDevelopmentExpense": "R&D Expense",
+    "SellingGeneralAndAdministrativeExpense": "SG&A Expense",
+    "IncomeTaxExpenseBenefit": "Income Tax",
+    "EarningsPerShareBasic": "EPS Basic",
+    "EarningsPerShareDiluted": "EPS Diluted",
+    "Assets": "Total Assets",
+    "Liabilities": "Total Liabilities",
+    "StockholdersEquity": "Stockholders Equity",
+    "CashAndCashEquivalentsAtCarryingValue": "Cash and Equivalents",
+    "LongTermDebt": "Long Term Debt",
+    "CommonStockSharesOutstanding": "Shares Outstanding",
+    "NetCashProvidedByUsedInOperatingActivities": "Operating Cash Flow",
+    "NetCashProvidedByUsedInInvestingActivities": "Investing Cash Flow",
+    "NetCashProvidedByUsedInFinancingActivities": "Financing Cash Flow",
+    "AllocatedShareBasedCompensationExpense": "Stock-Based Compensation",
+    "AmortizationOfIntangibleAssets": "Amortization of Intangibles",
+    "DepreciationDepletionAndAmortization": "D&A",
+    "InterestExpense": "Interest Expense",
+}
+
+# 报表分组关键词
+STATEMENT_GROUPS = {
+    "Income Statement": [
+        "Revenue", "NetIncomeLoss", "OperatingIncomeLoss", "GrossProfit",
+        "CostsAndExpenses", "ResearchAndDevelopmentExpense",
+        "SellingGeneralAndAdministrativeExpense", "IncomeTaxExpenseBenefit",
+        "EarningsPerShareBasic", "EarningsPerShareDiluted",
+        "RevenueFromContractWithCustomerExcludingAssessedTax",
+        "NetIncomeLossAvailableToCommonStockholdersBasic",
+        "IncomeLossFromContinuingOperations",
     ],
-    "10-Q": [
-        ("Item 1", "Financial Statements"),
-        ("Item 2", "Management's Discussion and Analysis"),
-        ("Item 3", "Quantitative and Qualitative Disclosures About Market Risk"),
-        ("Item 4", "Controls and Procedures"),
-        ("Item 1A", "Risk Factors"),
-        ("Item 2", "Unregistered Sales of Equity Securities"),
-        ("Item 5", "Other Information"),
-        ("Item 6", "Exhibits"),
-    ]
+    "Balance Sheet": [
+        "Assets", "Liabilities", "StockholdersEquity",
+        "CashAndCashEquivalentsAtCarryingValue", "LongTermDebt",
+        "CommonStockSharesOutstanding",
+    ],
+    "Cash Flow": [
+        "NetCashProvidedByUsedInOperatingActivities",
+        "NetCashProvidedByUsedInInvestingActivities",
+        "NetCashProvidedByUsedInFinancingActivities",
+    ],
+    
 }
 
 
-class SECParser:
-    """解析SEC财报文件"""
-    
-    def __init__(self):
-        self.raw_dir = RAW_DIR
-        self.processed_dir = PROCESSED_DIR
-        
-    def clean_text(self, text: str) -> str:
-        """
-        清理提取的文本
-        
-        Args:
-            text: 原始文本
-            
-        Returns:
-            清理后的文本
-        """
-        if not text:
-            return ""
-        
-        # 替换多个空白字符为单个空格
-        text = re.sub(r'\s+', ' ', text)
-        
-        # 去除首尾空白
-        text = text.strip()
-        
-        # 去除特殊字符
-        text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
-        
-        return text
-    
-    def extract_text_from_html(self, html_content: str) -> str:
-        """
-        从HTML中提取纯文本
-        
-        Args:
-            html_content: HTML内容
-            
-        Returns:
-            提取的纯文本
-        """
-        soup = BeautifulSoup(html_content, 'lxml')
-        
-        # 移除script和style标签
-        for tag in soup(['script', 'style', 'meta', 'link', 'head']):
-            tag.decompose()
-        
-        # 移除隐藏元素
-        for tag in soup.find_all(style=re.compile(r'display\s*:\s*none', re.I)):
-            tag.decompose()
-        
-        # 获取文本
-        text = soup.get_text(separator=' ')
-        
-        return self.clean_text(text)
-    
-    def find_item_sections(self, text: str, filing_type: str) -> List[Dict]:
-        """
-        识别文档中的Item章节
-        
-        Args:
-            text: 文档文本
-            filing_type: 文件类型 (10-K 或 10-Q)
-            
-        Returns:
-            章节列表
-        """
-        sections = []
-        
-        # 获取对应的Item列表
-        items = SEC_ITEMS.get(filing_type, SEC_ITEMS["10-K"])
-        
-        # 构建正则表达式来匹配Item标题
-        # 匹配模式如: "Item 1." "Item 1A." "ITEM 1 -" 等
-        for item_num, item_name in items:
-            # 创建灵活的匹配模式
-            pattern = re.compile(
-                rf'({re.escape(item_num)}[\.\s\-:]+\s*{re.escape(item_name)})',
-                re.IGNORECASE
-            )
-            
-            matches = list(pattern.finditer(text))
-            
-            for match in matches:
-                sections.append({
-                    "item": item_num,
-                    "title": item_name,
-                    "start_pos": match.start(),
-                    "matched_text": match.group(1)
-                })
-        
-        # 按位置排序
-        sections.sort(key=lambda x: x["start_pos"])
-        
-        # 去重（同一个Item可能匹配多次，只保留第一次）
-        seen_items = set()
-        unique_sections = []
-        for section in sections:
-            if section["item"] not in seen_items:
-                seen_items.add(section["item"])
-                unique_sections.append(section)
-        
-        return unique_sections
-    
-    def split_into_sections(self, text: str, sections: List[Dict]) -> List[Dict]:
-        """
-        根据识别的章节位置，将文本分割成段落
-        
-        Args:
-            text: 完整文本
-            sections: 章节信息列表
-            
-        Returns:
-            带内容的章节列表
-        """
-        if not sections:
-            # 如果没有识别到章节，将整个文档作为一个section
-            return [{
-                "item": "Full Document",
-                "title": "Complete Filing",
-                "content": text
-            }]
-        
-        result = []
-        
-        for i, section in enumerate(sections):
-            start = section["start_pos"]
-            
-            # 结束位置是下一个章节的开始，或者文档末尾
-            if i + 1 < len(sections):
-                end = sections[i + 1]["start_pos"]
-            else:
-                end = len(text)
-            
-            content = text[start:end].strip()
-            
-            # 只保留有实质内容的章节
-            if len(content) > 100:
-                result.append({
-                    "item": section["item"],
-                    "title": section["title"],
-                    "content": content
-                })
-        
-        return result
-    
-    def parse_filing(self, file_path: str) -> Dict:
-        """
-        解析单个财报文件
-        
-        Args:
-            file_path: HTML文件路径
-            
-        Returns:
-            结构化的财报内容
-        """
-        print(f"正在解析: {file_path}")
-        
-        # 从文件名提取信息
-        filename = os.path.basename(file_path)
-        parts = filename.replace('.html', '').split('_')
-        
-        if len(parts) >= 3:
-            ticker = parts[0]
-            filing_type = parts[1]
-            filing_date = parts[2]
-        else:
-            ticker = "Unknown"
-            filing_type = "10-K"
-            filing_date = "Unknown"
-        
-        # 读取文件
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                html_content = f.read()
-        except UnicodeDecodeError:
-            with open(file_path, 'r', encoding='latin-1') as f:
-                html_content = f.read()
-        
-        # 提取文本
-        text = self.extract_text_from_html(html_content)
-        
-        # 识别章节
-        sections = self.find_item_sections(text, filing_type)
-        
-        # 分割内容
-        section_contents = self.split_into_sections(text, sections)
-        
-        result = {
-            "filename": filename,
-            "file_path": file_path,
-            "ticker": ticker,
-            "filing_type": filing_type,
-            "filing_date": filing_date,
-            "total_length": len(text),
-            "num_sections": len(section_contents),
-            "sections": section_contents
+# ─────────────────────────────────────────────
+# 数据结构
+# ─────────────────────────────────────────────
+
+@dataclass
+class ParsedElement:
+    element_type: str   # "table" | "text" | "section_header"
+    content: str
+    section: str = ""
+    confidence: str = "high"
+    error: Optional[str] = None
+
+
+@dataclass
+class ParsedDocument:
+    source_file: str
+    company: str = ""
+    form_type: str = ""
+    elements: list = field(default_factory=list)
+
+    def to_json(self, path: str):
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        data = {
+            "source": self.source_file,
+            "company": self.company,
+            "form_type": self.form_type,
+            "total_elements": len(self.elements),
+            "elements": [
+                {
+                    "type": e.element_type,
+                    "section": e.section,
+                    "content": e.content,
+                    "confidence": e.confidence,
+                    "error": e.error,
+                }
+                for e in self.elements
+            ]
         }
-        
-        print(f"  - 提取了 {len(text)} 字符, {len(section_contents)} 个章节")
-        
-        return result
-    
-    def parse_all(self) -> List[Dict]:
-        """
-        解析所有下载的财报
-        
-        Returns:
-            所有解析结果的列表
-        """
-        all_results = []
-        
-        # 遍历raw目录下的所有公司文件夹
-        for ticker_dir in os.listdir(self.raw_dir):
-            ticker_path = os.path.join(self.raw_dir, ticker_dir)
-            
-            if not os.path.isdir(ticker_path):
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+# ─────────────────────────────────────────────
+# iXBRL 数值数据提取
+# ─────────────────────────────────────────────
+
+def extract_segment_label(dims: list) -> str:
+    labels = []
+    for dim in dims:
+        value = dim.get("value", "")
+        dimension = dim.get("dimension", "")
+        if ":" in value:
+            value = value.split(":")[-1]
+        value = value.replace("Member", "").replace("Segment", "")
+        value = re.sub(r'([A-Z])', r' \1', value).strip()
+        # 跳过合并维度，只取业务分部维度
+        if "ConsolidationItems" in dimension or "StatementEquityComponents" in dimension:
+            continue
+        if value and value not in ["Operating Segments", "Consolidation Items"]:
+            labels.append(value)
+    return labels[0] if labels else ""
+
+
+def extract_numeric_data(filing) -> list[ParsedElement]:
+    """
+    从 ixbrl-parse 的 numeric 数据生成表格 chunks
+    按报表类型分组，每组生成一个 Markdown 表格
+    """
+    elements = []
+
+    # 按指标名分组
+    by_name: dict = {}
+    for item in filing.numeric:
+        name = item.name
+        if name not in by_name:
+            by_name[name] = []
+        by_name[name].append(item)
+
+    # 按报表类型分组生成表格
+    for statement_name, metric_names in STATEMENT_GROUPS.items():
+        rows = []
+
+        for metric_name in metric_names:
+            if metric_name not in by_name:
                 continue
-            
-            print(f"\n{'='*50}")
-            print(f"处理公司: {ticker_dir}")
-            print(f"{'='*50}")
-            
-            # 遍历该公司的所有HTML文件
-            for filename in os.listdir(ticker_path):
-                if filename.endswith('.html'):
-                    file_path = os.path.join(ticker_path, filename)
-                    result = self.parse_filing(file_path)
-                    all_results.append(result)
-        
-        # 保存解析结果
-        self._save_parsed_results(all_results)
-        
-        return all_results
-    
-    def _save_parsed_results(self, results: List[Dict]) -> None:
-        """保存解析结果到JSON文件"""
-        os.makedirs(self.processed_dir, exist_ok=True)
-        
-        output_path = os.path.join(self.processed_dir, "parsed_filings.json")
-        
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(results, f, indent=2, ensure_ascii=False)
-        
-        print(f"\n解析结果已保存: {output_path}")
+
+            items = by_name[metric_name]
+            label = GAAP_LABELS.get(metric_name, metric_name)
+
+            # 只取没有 segment 维度的数据（合并报表）
+            consolidated = [i for i in items if not i.context.segments]
+
+            # 按时间段排序
+            consolidated.sort(
+            key=lambda x: x.context.startdate or x.context.instant or x.context.enddate,
+            reverse=True)
+
+            if not consolidated:
+                continue
+
+            # 取最近4个时间段
+            for item in consolidated[:8]:
+                ctx = item.context
+                if ctx.startdate:
+                    period = f"{ctx.startdate} to {ctx.enddate}"
+                elif ctx.instant:
+                    period = str(ctx.instant)
+                elif ctx.enddate:
+                    period = str(ctx.enddate)
+                else:
+                    period = "N/A"
+
+                rows.append({
+                    "metric": label,
+                    "period": period,
+                    "value": item.value,
+                    "unit": getattr(item, "unit", "USD"),
+                })
+
+        if not rows:
+            continue
+
+        # 转成 Markdown 表格
+        # 收集所有时间段
+        periods = list(dict.fromkeys(r["period"] for r in rows))[:4]
+        metrics = list(dict.fromkeys(r["metric"] for r in rows))
+
+        # 构建表格
+        header = "| Metric | " + " | ".join(periods) + " |"
+        separator = "| --- | " + " | ".join("---" for _ in periods) + " |"
+
+        table_rows = []
+        for metric in metrics:
+            metric_data = {r["period"]: r["value"] for r in rows if r["metric"] == metric}
+            values = []
+            for period in periods:
+                val = metric_data.get(period, "")
+                if val != "" and isinstance(val, (int, float)):
+                    # 格式化数字
+                    if abs(val) >= 1_000_000:
+                        val = f"${val/1_000_000:.1f}M"
+                    else:
+                        val = f"{val:,.4f}".rstrip("0").rstrip(".")
+                values.append(str(val))
+            table_rows.append(f"| {metric} | " + " | ".join(values) + " |")
+
+        content = "\n".join([header, separator] + table_rows)
+        elements.append(ParsedElement(
+            element_type="table",
+            content=content,
+            section=statement_name,
+            confidence="high"
+        ))
+
+    # 业务分部数据单独一个表格
+    segment_elements = extract_segment_data(by_name)
+    elements.extend(segment_elements)
+
+    return elements
 
 
-def main():
-    """主函数"""
-    print("TechFilings - 财报解析工具")
-    print("="*50)
-    
-    parser = SECParser()
-    results = parser.parse_all()
-    
-    # 统计
-    total_sections = sum(r["num_sections"] for r in results)
-    total_chars = sum(r["total_length"] for r in results)
-    
-    print(f"\n{'='*50}")
-    print(f"解析完成!")
-    print(f"文件数量: {len(results)}")
-    print(f"总章节数: {total_sections}")
-    print(f"总字符数: {total_chars:,}")
-    print(f"{'='*50}")
-    
-    return results
+def extract_segment_data(by_name: dict) -> list[ParsedElement]:
+    """提取业务分部数据"""
+    EXCLUDE_FROM_SEGMENTS = {
+    "Stockholders Equity", "Shares Outstanding", "Total Assets",
+    "Total Liabilities", "Cash and Equivalents", "Long Term Debt"
+    }
+    elements = []
+    segment_rows = []
 
+    for metric_name, items in by_name.items():
+        label = GAAP_LABELS.get(metric_name, metric_name)
+        segmented = [i for i in items if i.context.segments]
+
+        if label in EXCLUDE_FROM_SEGMENTS:
+            continue
+        if metric_name not in GAAP_LABELS:
+            continue
+        for item in segmented:
+            if item.context.instant and not item.context.startdate:
+                continue
+            seg_label = extract_segment_label(item.context.segments)
+            if not seg_label:
+                continue
+            ctx = item.context
+
+            if ctx.startdate:
+                period = f"{ctx.startdate} to {ctx.enddate}"
+            elif ctx.instant:
+                period = str(ctx.instant)
+            elif ctx.enddate:
+                period = str(ctx.enddate)
+            else:
+                period = "N/A"
+
+            segment_rows.append({
+                "metric": label,
+                "segment": seg_label,
+                "period": period,
+                "value": item.value,
+            })
+
+    if not segment_rows:
+        return elements
+
+    # 按 metric + segment 分组
+    from collections import Counter
+    period_counts = Counter(r["period"] for r in segment_rows)
+    periods = [p for p, _ in period_counts.most_common(4)]
+    periods.sort(reverse=True)
+
+    # 过滤掉没有任何数据的时间段
+    periods = [
+        p for p in periods
+        if any(
+            r["value"] not in [None, 0, ""]
+            for r in segment_rows
+            if r["period"] == p
+        )
+    ]
+
+    combinations = list(dict.fromkeys(
+        (r["metric"], r["segment"]) for r in segment_rows
+    ))
+
+    header = "| Metric | Segment | " + " | ".join(periods) + " |"
+    separator = "| --- | --- | " + " | ".join("---" for _ in periods) + " |"
+    rows = []
+
+    for metric, segment in combinations:  
+        data = {
+            r["period"]: r["value"]
+            for r in segment_rows
+            if r["metric"] == metric and r["segment"] == segment
+        }
+        values = []
+        for period in periods:
+            val = data.get(period, "")
+            if val != "" and isinstance(val, (int, float)):
+                val = f"${val/1_000_000:.1f}M" if abs(val) >= 1_000_000 else f"{val:,.0f}"
+            values.append(str(val))
+
+        if not any(v for v in values if v and v not in ["", "0"]):
+            continue
+        # 加这一行：跳过未翻译的 GAAP 指标名
+        if metric not in GAAP_LABELS.values():
+            continue
+        rows.append(f"| {metric} | {segment} | " + " | ".join(values) + " |")
+
+    if rows:
+        content = "\n".join([header, separator] + rows)
+        elements.append(ParsedElement(
+            element_type="table",
+            content=content,
+            section="Business Segments",
+            confidence="high"
+        ))
+
+    return elements
+
+
+# ─────────────────────────────────────────────
+# 文字段落提取（BeautifulSoup）
+# ─────────────────────────────────────────────
+
+def extract_text_elements(html: str) -> list[ParsedElement]:
+    """去掉 ix: 标签，提取文字段落"""
+    soup = BeautifulSoup(html, "lxml")
+
+    # 去掉 script/style/head
+    for tag in soup(["script", "style", "head", "meta"]):
+        tag.decompose()
+
+    # 去掉 ix: 命名空间标签，保留内容
+    for tag in soup.find_all(True):
+        if ":" in tag.name:
+            tag.unwrap()
+
+    # 去掉 display:none 的元素（XBRL hidden section）
+    for tag in soup.find_all(style=re.compile(r'display\s*:\s*none', re.I)):
+        tag.decompose()
+
+    elements = []
+    current_section = "UNKNOWN"
+
+    for tag in soup.find_all(["p", "div", "span"]):
+        # 跳过表格内的元素
+        if tag.find_parent("table"):
+            continue
+        # 跳过有子块级元素的（只取叶节点文字）
+        if tag.find(["p", "div", "table"]):
+            continue
+
+        text = tag.get_text(separator=" ", strip=True)
+        text = re.sub(r'\s+', ' ', text)
+
+        if not text or len(text) < 20:
+            continue
+
+        # 检测章节标题
+        if _is_section_header(text, tag):
+            current_section = text[:100]
+            elements.append(ParsedElement(
+                element_type="section_header",
+                content=text,
+                section=current_section
+            ))
+        elif len(text) > 50:
+            elements.append(ParsedElement(
+                element_type="text",
+                content=text,
+                section=current_section
+            ))
+
+    return elements
+
+
+def _is_section_header(text: str, tag) -> bool:
+    """判断是否为章节标题"""
+    # SEC 标准章节模式
+    patterns = [
+        r"^ITEM\s+\d+[A-Z]?\.",
+        r"^PART\s+[IVX]+",
+        r"^NOTE\s+\d+",
+    ]
+    for pattern in patterns:
+        if re.match(pattern, text, re.IGNORECASE):
+            return True
+
+    # 短文字 + 全大写
+    if len(text) < 100 and text.isupper():
+        return True
+
+    return False
+
+
+# ─────────────────────────────────────────────
+# 主解析器
+# ─────────────────────────────────────────────
+
+def parse_filename(filename: str) -> dict:
+    stem = Path(filename).stem
+    parts = stem.split("_")
+    return {
+        "company": parts[0] if len(parts) > 0 else "",
+        "form_type": parts[1] if len(parts) > 1 else "",
+    }
+
+
+def parse_file(html_path: str) -> ParsedDocument:
+    meta = parse_filename(html_path)
+    doc = ParsedDocument(
+        source_file=html_path,
+        company=meta["company"],
+        form_type=meta["form_type"]
+    )
+
+    with open(html_path, "r", encoding="utf-8", errors="replace") as f:
+        html = f.read()
+
+    # 1. ixbrl-parse 提取数值数据
+    try:
+        from ixbrlparse import IXBRL
+        filing = IXBRL.open(html_path)
+        numeric_elements = extract_numeric_data(filing)
+        doc.elements.extend(numeric_elements)
+    except Exception as e:
+        doc.elements.append(ParsedElement(
+            element_type="text",
+            content=f"[XBRL解析失败: {e}]",
+            section="ERROR"
+        ))
+
+    # 2. BeautifulSoup 提取文字段落
+    text_elements = extract_text_elements(html)
+    doc.elements.extend(text_elements)
+
+    return doc
+
+
+# ─────────────────────────────────────────────
+# 批量处理
+# ─────────────────────────────────────────────
+
+def get_output_path(html_path: str) -> str:
+    filename = Path(html_path).stem
+    return str(Path(PROCESSED_DIR) / f"{filename}_parsed.json")
+
+
+def parse_all():
+    raw_path = Path(RAW_DIR)
+    Path(PROCESSED_DIR).mkdir(parents=True, exist_ok=True)
+
+    html_files = list(raw_path.glob("*/*.html")) + list(raw_path.glob("*/*.htm"))
+    if not html_files:
+        print(f"[!] 未在 {RAW_DIR} 找到 HTML 文件")
+        return
+
+    print(f"[信息] 共找到 {len(html_files)} 个文件")
+
+    for html_file in tqdm(html_files, desc="解析进度"):
+        output_path = get_output_path(str(html_file))
+
+        try:
+            start = time.time()
+            result = parse_file(str(html_file))
+            result.to_json(output_path)
+
+            tables = sum(1 for e in result.elements if e.element_type == "table")
+            texts = sum(1 for e in result.elements if e.element_type == "text")
+            elapsed = time.time() - start
+
+            tqdm.write(f"[✓] {html_file.name} → 表格:{tables} 文字:{texts} 耗时:{elapsed:.1f}s")
+        except Exception as e:
+            tqdm.write(f"[✗] {html_file.name} 失败: {e}")
+
+
+# ─────────────────────────────────────────────
+# 入口
+# ─────────────────────────────────────────────
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    if len(sys.argv) > 1:
+        html_file = sys.argv[1]
+        result = parse_file(html_file)
+        out = get_output_path(html_file)
+        result.to_json(out)
+        print(f"[✓] 输出: {out}")
+        print(f"    表格: {sum(1 for e in result.elements if e.element_type == 'table')}")
+        print(f"    文字: {sum(1 for e in result.elements if e.element_type == 'text')}")
+    else:
+        parse_all()

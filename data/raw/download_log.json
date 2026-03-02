@@ -1,5 +1,15 @@
 [
   {
+    "form_type": "10-K",
+    "accession_number": "0001045810-26-000021",
+    "filing_date": "2026-02-25",
+    "primary_document": "nvda-20260125.htm",
+    "company": "NVIDIA",
+    "ticker": "NVDA",
+    "local_path": "data/raw/NVDA/NVDA_10-K_2026-02-25.html",
+    "download_success": true
+  },
+  {
     "form_type": "10-Q",
     "accession_number": "0001045810-25-000230",
     "filing_date": "2025-11-19",
@@ -47,16 +57,6 @@
     "company": "NVIDIA",
     "ticker": "NVDA",
     "local_path": "data/raw/NVDA/NVDA_10-K_2024-02-21.html",
-    "download_success": true
-  },
-  {
-    "form_type": "10-K",
-    "accession_number": "0001045810-23-000017",
-    "filing_date": "2023-02-24",
-    "primary_document": "nvda-20230129.htm",
-    "company": "NVIDIA",
-    "ticker": "NVDA",
-    "local_path": "data/raw/NVDA/NVDA_10-K_2023-02-24.html",
     "download_success": true
   },
   {
@@ -120,6 +120,16 @@
     "download_success": true
   },
   {
+    "form_type": "10-K",
+    "accession_number": "0001321655-26-000011",
+    "filing_date": "2026-02-17",
+    "primary_document": "pltr-20251231.htm",
+    "company": "Palantir",
+    "ticker": "PLTR",
+    "local_path": "data/raw/PLTR/PLTR_10-K_2026-02-17.html",
+    "download_success": true
+  },
+  {
     "form_type": "10-Q",
     "accession_number": "0001321655-25-000131",
     "filing_date": "2025-11-04",
@@ -167,16 +177,6 @@
     "company": "Palantir",
     "ticker": "PLTR",
     "local_path": "data/raw/PLTR/PLTR_10-K_2024-02-20.html",
-    "download_success": true
-  },
-  {
-    "form_type": "10-K",
-    "accession_number": "0001321655-23-000011",
-    "filing_date": "2023-02-21",
-    "primary_document": "pltr-20221231.htm",
-    "company": "Palantir",
-    "ticker": "PLTR",
-    "local_path": "data/raw/PLTR/PLTR_10-K_2023-02-21.html",
     "download_success": true
   }
 ]
