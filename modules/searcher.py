@@ -6,14 +6,11 @@ TechFilings - Searcher 模块
 import os
 import requests
 from typing import List, Dict, Optional
-
 import chromadb
-
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import CHROMA_PERSIST_DIR
 
-from config import EMBEDDING_MODEL,OLLAMA_URL
+from config import EMBEDDING_MODEL,OLLAMA_URL,CHROMA_PERSIST_DIR, TOP_K
 
 class DocumentSearcher:
     def __init__(self, collection_name: str = "techfilings"):
@@ -35,20 +32,23 @@ class DocumentSearcher:
     def search(
         self,
         query: str,
-        top_k: int = 5,
+        top_k: int = TOP_K,
         filter_ticker: Optional[str] = None,
-        filter_filing_type: Optional[str] = None
+        filter_filing_type: Optional[str] = None,
+        filter_period: Optional[str] = None,
     ) -> List[Dict]:
         query_embedding = self.get_query_embedding(query)
 
         # 构建筛选条件（兼容新旧 metadata 字段）
         where_filter = None
-        if filter_ticker or filter_filing_type:
+        if filter_ticker or filter_filing_type or filter_period:
             conditions = []
             if filter_ticker:
-                conditions.append({"company": filter_ticker})
+                conditions.append({"company": {"$eq": filter_ticker}})
             if filter_filing_type:
-                conditions.append({"form_type": filter_filing_type})
+                conditions.append({"form_type": {"$eq": filter_filing_type}})
+            if filter_period:
+                conditions.append({"period": {"$eq": filter_period}})
 
             where_filter = conditions[0] if len(conditions) == 1 else {"$and": conditions}
 
@@ -72,13 +72,13 @@ class DocumentSearcher:
 
         return search_results
 
-    def search_by_company(self, query: str, company: str, top_k: int = 5) -> List[Dict]:
+    def search_by_company(self, query: str, company: str, top_k: int = TOP_K) -> List[Dict]:
         return self.search(query, top_k=top_k, filter_ticker=company)
 
-    def search_10k_only(self, query: str, top_k: int = 5) -> List[Dict]:
+    def search_10k_only(self, query: str, top_k: int = TOP_K) -> List[Dict]:
         return self.search(query, top_k=top_k, filter_filing_type="10-K")
 
-    def search_10q_only(self, query: str, top_k: int = 5) -> List[Dict]:
+    def search_10q_only(self, query: str, top_k: int = TOP_K) -> List[Dict]:
         return self.search(query, top_k=top_k, filter_filing_type="10-Q")
 
 

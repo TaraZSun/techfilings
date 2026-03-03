@@ -1,0 +1,55 @@
+"""
+TechFilings - RAG 评测脚本
+读取 sample_qa_v2.csv，跑每个问题，输出对比表格
+"""
+
+import csv
+
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from config import TOP_K, INPUT_CSV, OUTPUT_CSV
+from modules.retriever import DocumentRetriever
+
+
+def run_eval():
+    retriever = DocumentRetriever()
+    os.makedirs("output", exist_ok=True)
+    with open(INPUT_CSV, "r") as f:
+        questions = list(csv.DictReader(f))
+    
+    results = []
+    for i, row in enumerate(questions):
+        print(f"[{i+1}/{len(questions)}] {row['question'][:60]}...")
+     
+        company = row["company"]
+        filter_company = None if "/" in company else company
+ 
+        result = retriever.retrieve_and_answer(
+            query=row["question"],
+            top_k=TOP_K,
+            filter_company=filter_company
+        )
+        
+        results.append({
+            "question": row["question"],
+            "expected_answer": row["answer"],
+            "system_answer": result["answer"],
+            "company": row["company"],
+            "question_type": row["question_type"],
+            "num_sources": result["num_sources"],
+            "sources": ", ".join([
+                f"{c['company']} {c['form_type']} {c['period']}"
+                for c in result.get("citations", [])
+            ]),
+        })
+    
+    with open(OUTPUT_CSV, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=results[0].keys())
+        writer.writeheader()
+        writer.writerows(results)
+    
+    print(f"\n✓ 完成，结果保存到 {OUTPUT_CSV}")
+
+if __name__ == "__main__":
+    run_eval()

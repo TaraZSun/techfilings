@@ -1,6 +1,7 @@
 """
 TechFilings 配置文件
 """
+from datetime import datetime
 
 # SEC EDGAR API 设置
 SEC_BASE_URL = "https://www.sec.gov"
@@ -40,6 +41,9 @@ PROCESSED_DIR = f"{DATA_DIR}/processed"
 CHUNKS_PATH = f"{PROCESSED_DIR}/chunks.json"
 CHATS_DIR = "data/chats"
 
+INPUT_CSV = "data/samples/sample_qa_v2.csv"
+OUTPUT_CSV = f"output/eval_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+
 # OpenAI 设置
 OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
 OPENAI_CHAT_MODEL = "gpt-4o-mini"
@@ -50,3 +54,5 @@ CHROMA_PERSIST_DIR = f"{DATA_DIR}/chroma_db"
 
 CHUNK_SIZE = 1024
 CHUNK_OVERLAP = 64
+
+TOP_K = 5

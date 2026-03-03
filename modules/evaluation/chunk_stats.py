@@ -1,0 +1,86 @@
+"""
+TechFilings - Chunk Statistics
+分析 chunks.json 的质量和分布
+"""
+
+import json
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from config import CHUNKS_PATH
+
+
+def analyze_chunks():
+    with open(CHUNKS_PATH) as f:
+        chunks = json.load(f)
+
+    texts = [c for c in chunks if c["metadata"]["type"] == "text"]
+    tables = [c for c in chunks if c["metadata"]["type"] == "table"]
+
+    text_lengths = [len(c["text"]) for c in texts]
+    table_lengths = [len(c["text"]) for c in tables]
+
+    # 按公司统计
+    by_company = {}
+    for c in chunks:
+        company = c["metadata"].get("company", "UNKNOWN")
+        if company not in by_company:
+            by_company[company] = {"text": 0, "table": 0}
+        by_company[company][c["metadata"]["type"]] += 1
+
+    # 按 section 统计 top 10
+    by_section = {}
+    for c in chunks:
+        section = c["metadata"].get("section", "UNKNOWN")
+        by_section[section] = by_section.get(section, 0) + 1
+    top_sections = sorted(by_section.items(), key=lambda x: x[1], reverse=True)[:10]
+
+    # 长度分布
+    def bucket(lengths):
+        buckets = {"<500": 0, "500-1000": 0, "1000-2000": 0, ">2000": 0}
+        for l in lengths:
+            if l < 500:
+                buckets["<500"] += 1
+            elif l < 1000:
+                buckets["500-1000"] += 1
+            elif l < 2000:
+                buckets["1000-2000"] += 1
+            else:
+                buckets[">2000"] += 1
+        return buckets
+
+    print("=" * 50)
+    print("CHUNK STATISTICS")
+    print("=" * 50)
+
+    print(f"\n[Overall]")
+    print(f"  Total chunks : {len(chunks)}")
+    print(f"  Text chunks  : {len(texts)}")
+    print(f"  Table chunks : {len(tables)}")
+
+    if text_lengths:
+        print(f"\n[Text Chunk Length]")
+        print(f"  Avg : {sum(text_lengths) // len(text_lengths)}")
+        print(f"  Min : {min(text_lengths)}")
+        print(f"  Max : {max(text_lengths)}")
+        print(f"  Distribution: {bucket(text_lengths)}")
+
+    if table_lengths:
+        print(f"\n[Table Chunk Length]")
+        print(f"  Avg : {sum(table_lengths) // len(table_lengths)}")
+        print(f"  Min : {min(table_lengths)}")
+        print(f"  Max : {max(table_lengths)}")
+
+    print(f"\n[By Company]")
+    for company, counts in sorted(by_company.items()):
+        print(f"  {company}: text={counts['text']} table={counts['table']} total={sum(counts.values())}")
+
+    print(f"\n[Top 10 Sections]")
+    for section, count in top_sections:
+        print(f"  {count:4d}  {section[:60]}")
+
+    print("=" * 50)
+
+
+if __name__ == "__main__":
+    analyze_chunks()
