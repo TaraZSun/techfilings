@@ -9,8 +9,13 @@ from typing import List, Dict, Optional
 import chromadb
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+from openai import OpenAI
+from config import USE_LOCAL_EMBEDDING, OPENAI_EMBEDDING_MODEL
 from config import EMBEDDING_MODEL,OLLAMA_URL,CHROMA_PERSIST_DIR, TOP_K
+from dotenv import load_dotenv
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
 
 class DocumentSearcher:
     def __init__(self, collection_name: str = "techfilings"):
@@ -21,13 +26,21 @@ class DocumentSearcher:
         self.chroma_client = chromadb.PersistentClient(path=CHROMA_PERSIST_DIR)
         self.collection = self.chroma_client.get_collection(name=collection_name)
 
-    def get_query_embedding(self, query: str) -> List[float]:
-        response = requests.post(
-            f"{OLLAMA_URL}/api/embeddings",
-            json={"model": self.embedding_model, "prompt": query},
-            timeout=30
-        )
-        return response.json()["embedding"]
+    def get_query_embedding(self, query: str) -> list[float]:
+        if USE_LOCAL_EMBEDDING:
+            response = requests.post(
+                f"{OLLAMA_URL}/api/embeddings",
+                json={"model": EMBEDDING_MODEL, "prompt": query},
+                timeout=30
+            )
+            return response.json()["embedding"]
+        else:
+            client = OpenAI(api_key=OPENAI_API_KEY)
+            response = client.embeddings.create(
+                model=OPENAI_EMBEDDING_MODEL,
+                input=query
+            )
+            return response.data[0].embedding
 
     def search(
         self,

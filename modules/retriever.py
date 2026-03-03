@@ -4,16 +4,14 @@ TechFilings - Retriever 模块
 """
 
 import os
-import json
-import requests
+import requests # type: ignore
 from typing import List, Dict
-from .system_prompt import ANSWER_PROMPT
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from modules.searcher import DocumentSearcher
-
-
+from techfilings.modules.prompt import system_prompt
 from config import OLLAMA_URL, CHAT_MODEL
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 
 class DocumentRetriever:
     def __init__(self):
@@ -51,7 +49,7 @@ class DocumentRetriever:
             return "No relevant information found in the filings."
 
         context = self.format_sources_for_prompt(search_results)
-        prompt = ANSWER_PROMPT.format(context=context, query=query)
+        prompt = system_prompt.ANSWER_PROMPT.format(context=context, query=query)
 
         try:
             response = requests.post(
