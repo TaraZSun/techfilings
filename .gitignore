@@ -3,5 +3,6 @@
 __pycache__/
 *.pyc
 
-data/*
-!data/chroma_db/
+data/raw/
+data/processed/
+data/chats/

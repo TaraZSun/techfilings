@@ -18,7 +18,7 @@ from pathlib import Path
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import  PROCESSED_DIR, CHUNKS_PATH, CHUNK_OVERLAP, CHUNK_SIZE
+from config import  PROCESSED_DIR, CHUNKS_PATH, CHUNK_SIZE
 
 
 
@@ -44,33 +44,38 @@ def parse_filename(filename: str) -> dict:
 # 文字 chunking（recursive）
 # ─────────────────────────────────────────────
 
-def split_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
+def split_text(text: str, chunk_size: int = CHUNK_SIZE) -> list[str]:
+    """
+    层级切割：段落 → 句子
+    - 优先按段落（\n\n）切
+    - 段落超过 chunk_size 再按句子切
+    - 不使用 overlap，避免单词截断
+    """
     if len(text) <= chunk_size:
-        return [text]
+        return [text.strip()] if text.strip() else []
+
+    # 第一层：按段落切
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
 
     chunks = []
-    start = 0
-    while start < len(text):
-        end = min(start + chunk_size, len(text))
+    for para in paragraphs:
+        if len(para) <= chunk_size:
+            chunks.append(para)
+        else:
+            # 第二层：按句子切
+            sentences = re.split(r'(?<=[.!?])\s+', para)
+            current = ""
+            for sent in sentences:
+                if len(current) + len(sent) + 1 <= chunk_size:
+                    current = (current + " " + sent).strip()
+                else:
+                    if current:
+                        chunks.append(current)
+                    current = sent
+            if current:
+                chunks.append(current)
 
-        if end >= len(text):
-            chunks.append(text[start:])
-            break
-
-        # 从 end 往前找合适的断点
-        split_pos = end
-        for sep in ["\n\n", "\n", ". ", " "]:
-            pos = text.rfind(sep, start + chunk_size // 2, end)  # 至少走一半
-            if pos > start:
-                split_pos = pos + len(sep)
-                break
-
-        chunks.append(text[start:split_pos])
-        start = split_pos - overlap
-        if start <= 0:
-            start = split_pos  # 防止死循环
-
-    return [c.strip() for c in chunks if c.strip()]
+    return [c for c in chunks if c.strip()]
 
 
 
@@ -94,9 +99,8 @@ def chunk_document(json_path: str) -> list[dict]:
         nonlocal chunk_idx
         if not pending_texts:
             return
-        # print(f"flush: {len(pending_texts)} 个段落, section={pending_section}")
         merged = "\n\n".join(pending_texts)
-        print(f"merged长度: {len(merged)}, 段落数: {len(pending_texts)}") 
+     
         prefix = (
             f"[TEXT] {file_meta['company']} {file_meta['form_type']} {file_meta['period']}\n"
             f"Section: {pending_section}\n\n"
