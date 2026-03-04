@@ -2,7 +2,7 @@
 TechFilings 配置文件
 """
 from datetime import datetime
-
+import os
 # SEC EDGAR API 设置
 SEC_BASE_URL = "https://www.sec.gov"
 SEC_EDGAR_API = "https://data.sec.gov"
@@ -40,7 +40,7 @@ FILING_TYPES = ["10-K", "10-Q"]
 FILINGS_PER_TYPE = 3
 
 # 数据存储路径
-DATA_DIR = "data"
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 RAW_DIR = f"{DATA_DIR}/raw"
 PROCESSED_DIR = f"{DATA_DIR}/processed"
 CHUNKS_PATH = f"{PROCESSED_DIR}/chunks.json"

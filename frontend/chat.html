@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TechFilings — Ask the Filings</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+</head>
+<body class="chat-page">
+
+  <nav id="main-nav" class="scrolled">
+    <div class="logo">Tech<span>Filings</span></div>
+    <ul class="nav-links">
+      <li><a href="index.html">← Back</a></li>
+    </ul>
+  </nav>
+
+  <div class="chat-page-layout">
+
+    <aside class="sidebar">
+      <div class="sidebar-label">Covered Companies</div>
+      <ul class="ticker-list">
+        <li class="ticker-item"><span class="ticker-sym">NVDA</span><span class="ticker-name">NVIDIA</span></li>
+        <li class="ticker-item"><span class="ticker-sym">AMD</span><span class="ticker-name">Adv. Micro Devices</span></li>
+        <li class="ticker-item"><span class="ticker-sym">PLTR</span><span class="ticker-name">Palantir</span></li>
+        <li class="ticker-item"><span class="ticker-sym">MSFT</span><span class="ticker-name">Microsoft</span></li>
+      </ul>
+      <div class="sidebar-label" style="margin-top:2rem">Filing Types</div>
+      <ul class="filing-list">
+        <li>10-K · Annual report</li>
+        <li>10-Q · Quarterly report</li>
+      </ul>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-note">Every answer is grounded in SEC source documents. No hallucinations.</div>
+    </aside>
+
+    <main class="chat-area">
+
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">§</div>
+        <div class="empty-title">Ask anything about tech filings</div>
+        <div class="example-pills">
+          <button class="pill" onclick="fillQuery(this)">What was NVIDIA's R&amp;D spend in FY2024?</button>
+          <button class="pill" onclick="fillQuery(this)">AMD gross margin trend 2023–2024</button>
+          <button class="pill" onclick="fillQuery(this)">Palantir revenue by segment</button>
+          <button class="pill" onclick="fillQuery(this)">NVIDIA export control risk factors</button>
+        </div>
+      </div>
+
+      <div id="chat-container"></div>
+
+      <div class="input-bar">
+        <div class="input-wrap">
+          <textarea id="query-input" placeholder="Ask a question about the filings..." rows="1" autocomplete="off"></textarea>
+          <button id="send-btn" aria-label="Send">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 8L14 8M14 8L9 3M14 8L9 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="input-hint">Enter to send · Shift+Enter for new line</div>
+      </div>
+
+    </main>
+  </div>
+
+  <div class="cookie-banner" id="cookie-banner">
+    <p class="cookie-text">
+      <strong>A note on your queries.</strong>
+      Questions you ask may be used to improve TechFilings' retrieval system. No personal data is stored.
+    </p>
+    <div class="cookie-actions">
+      <button id="cookie-decline" class="btn-ghost">Decline</button>
+      <button id="cookie-accept" class="btn-gold">Accept</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="feedback-overlay">
+    <div class="feedback-modal">
+      <div class="feedback-eyebrow">Quick feedback to continue</div>
+      <div class="feedback-title">You've asked 3 questions</div>
+      <div class="feedback-subtitle">Help us improve TechFilings — what's working, what could be better?</div>
+      <textarea id="feedback-input" placeholder="e.g. Citations are helpful but I'd like more detail on financial tables..." rows="4"></textarea>
+      <div id="word-counter" class="word-counter"></div>
+      <button id="feedback-submit" class="btn-gold" disabled>Submit &amp; continue →</button>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="app.js"></script>
+  <script>
+    const ta = document.getElementById("query-input");
+    ta.addEventListener("input", () => {
+      ta.style.height = "auto";
+      ta.style.height = Math.min(ta.scrollHeight, 160) + "px";
+    });
+
+    function fillQuery(btn) {
+      const es = document.getElementById("empty-state");
+      es.style.display = "none";
+      es.style.height = "0";
+      const input = document.getElementById("query-input");
+      input.value = btn.textContent;
+      input.focus();
+    }
+
+    document.getElementById("send-btn").addEventListener("click", () => {
+      const es = document.getElementById("empty-state");
+      es.style.display = "none";
+      es.style.height = "0";
+    });
+
+    document.getElementById("query-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        const es = document.getElementById("empty-state");
+        es.style.display = "none";
+        es.style.height = "0";
+      }
+    });
+  </script>
+</body>
+</html>

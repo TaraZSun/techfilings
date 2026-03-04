@@ -8,7 +8,7 @@ import requests # type: ignore
 from typing import List, Dict
 import sys
 from modules.searcher import DocumentSearcher
-from techfilings.modules.prompt import system_prompt
+from modules.prompt import system_prompt
 from config import OLLAMA_URL, CHAT_MODEL
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

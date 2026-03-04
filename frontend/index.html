@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TechFilings — SEC Intelligence</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+</head>
+<body>
+
+  <nav id="main-nav">
+    <div class="logo">Tech<span>Filings</span></div>
+    <ul class="nav-links">
+      <li><a href="#about">About</a></li>
+      <li><a href="chat.html" class="nav-cta">Try it →</a></li>
+    </ul>
+  </nav>
+
+  <section id="about">
+
+    <div class="hero">
+      <div class="eyebrow">SEC Filing Intelligence · 10-K · 10-Q</div>
+      <h1>Ask anything about<br/><em>tech earnings filings</em></h1>
+      <p class="subtitle">Instant answers grounded in SEC source documents.<br/>No hallucinations — every response cites the exact filing passage.</p>
+      <a href="chat.html" class="hero-cta">Start asking →</a>
+    </div>
+
+    <div class="ticker-bar">
+      <div class="ticker-bar-header">
+        <div class="live-dot"></div>
+        <span class="ticker-bar-label">Indexed Filings</span>
+      </div>
+      <div class="ticker-bar-items">
+        <div class="ticker-bar-item">
+          <div class="tbs">NVDA</div>
+          <div class="tbn">NVIDIA Corp</div>
+          <div class="tbf">10-K · 10-Q · FY2024</div>
+        </div>
+        <div class="ticker-bar-item">
+          <div class="tbs">AMD</div>
+          <div class="tbn">Advanced Micro Devices</div>
+          <div class="tbf">10-K · 10-Q · FY2024</div>
+        </div>
+        <div class="ticker-bar-item">
+          <div class="tbs">PLTR</div>
+          <div class="tbn">Palantir Technologies</div>
+          <div class="tbf">10-K · 10-Q · FY2024</div>
+        </div>
+        <div class="ticker-bar-item">
+          <div class="tbs">MSFT</div>
+          <div class="tbn">Microsoft Corp</div>
+          <div class="tbf">10-K · 10-Q · FY2024</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <div class="section-label">Live example</div>
+      <div class="demo-box">
+        <div class="demo-query">
+          <span class="demo-role role-user">You</span>
+          <span class="demo-text">What were NVIDIA's key risk factors related to export controls in their 2024 10-K?</span>
+        </div>
+        <div class="demo-answer">
+          <span class="demo-role role-ai">AI</span>
+          <div>
+            <p class="demo-text">NVIDIA identified U.S. export control regulations as a significant risk, citing restrictions on A100 and H100 chip sales to China. The filing notes these restrictions created uncertainty around product substitution and could materially impact data center revenue — approximately 78% of total revenue in FY2024. NVIDIA also flagged risk of further tightening affecting future product generations.</p>
+            <div class="source-tag">NVIDIA 10-K FY2024 · Item 1A, Risk Factors · p.24</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="features-section">
+      <div class="section-label">Why TechFilings</div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">§</div>
+          <div class="feature-title">Source-grounded answers</div>
+          <p class="feature-desc">Every response is traced back to a specific passage in the SEC filing. If it's not in the document, we say so.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⌘</div>
+          <div class="feature-title">Natural language queries</div>
+          <p class="feature-desc">Ask in plain English. No need to navigate 200-page documents. Get the number or narrative you need in seconds.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">◈</div>
+          <div class="feature-title">Cross-filing comparison</div>
+          <p class="feature-desc">Compare R&D spend, margins, or risk disclosures across quarters and companies in a single query.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="scroll-indicator" onclick="window.location.href='chat.html'">
+      <span>Try it now</span>
+      <div class="scroll-arrow">↓</div>
+    </div>
+
+  </section>
+
+  <script>
+    window.addEventListener("scroll", () => {
+      const nav = document.getElementById("main-nav");
+      nav.classList.toggle("scrolled", window.scrollY > 60);
+    });
+  </script>
+</body>
+</html>
