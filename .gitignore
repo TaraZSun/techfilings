@@ -2,7 +2,6 @@
 
 output/
 data/
-!data/qa_samples
 
 # Python cache
 __pycache__/
@@ -10,12 +9,11 @@ __pycache__/
 *.pyo
 
 # Vector DB
-data/chroma_db/
-data/chroma/
+
 
 # Environment
 .env
 
 # Data files
-data/raw/
-data/processed/
+data
+!data/chroma_db/

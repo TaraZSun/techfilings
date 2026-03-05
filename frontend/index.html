@@ -19,6 +19,7 @@
 
   <section id="about">
 
+    <!-- Hero -->
     <div class="hero">
       <div class="eyebrow">SEC Filing Intelligence · 10-K · 10-Q</div>
       <h1>Ask anything about<br/><em>tech earnings filings</em></h1>
@@ -26,6 +27,7 @@
       <a href="chat.html" class="hero-cta">Start asking →</a>
     </div>
 
+    <!-- Ticker bar -->
     <div class="ticker-bar">
       <div class="ticker-bar-header">
         <div class="live-dot"></div>
@@ -55,6 +57,29 @@
       </div>
     </div>
 
+    <!-- Stats -->
+    <div class="stats-section">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number">4</div>
+          <div class="stat-label">Tech Companies</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">10-K & 10-Q</div>
+          <div class="stat-label">Filing Types</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">FY2024</div>
+          <div class="stat-label">Coverage Period</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">100%</div>
+          <div class="stat-label">Source-Grounded</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Demo -->
     <div class="demo-section">
       <div class="section-label">Live example</div>
       <div class="demo-box">
@@ -72,6 +97,7 @@
       </div>
     </div>
 
+    <!-- Features -->
     <div class="features-section">
       <div class="section-label">Why TechFilings</div>
       <div class="features-grid">
@@ -89,6 +115,67 @@
           <div class="feature-icon">◈</div>
           <div class="feature-title">Cross-filing comparison</div>
           <p class="feature-desc">Compare R&D spend, margins, or risk disclosures across quarters and companies in a single query.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- How it works -->
+    <div class="how-section">
+      <div class="section-label">How it works</div>
+      <div class="how-steps">
+        <div class="how-step">
+          <div class="how-number">01</div>
+          <div class="how-content">
+            <div class="how-title">Ask in plain English</div>
+            <p class="how-desc">Type any question about a company's financials, risk factors, or disclosures. No special syntax required.</p>
+          </div>
+        </div>
+        <div class="how-connector">→</div>
+        <div class="how-step">
+          <div class="how-number">02</div>
+          <div class="how-content">
+            <div class="how-title">Retrieve from filings</div>
+            <p class="how-desc">The system searches across indexed 10-K and 10-Q documents using vector embeddings to find the most relevant passages.</p>
+          </div>
+        </div>
+        <div class="how-connector">→</div>
+        <div class="how-step">
+          <div class="how-number">03</div>
+          <div class="how-content">
+            <div class="how-title">Answer with citations</div>
+            <p class="how-desc">Every answer is grounded in the source document with inline citations. No hallucinations — if it's not in the filing, we say so.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tech Stack -->
+    <div class="tech-section">
+      <div class="section-label">Tech Stack</div>
+      <div class="tech-grid">
+        <div class="tech-card">
+          <div class="tech-category">LLM</div>
+          <div class="tech-value">Llama 3.2</div>
+        </div>
+        <div class="tech-card">
+          <div class="tech-category">Embeddings</div>
+          <div class="tech-value">text-embedding-ada-002</div>
+        </div>
+        <div class="tech-card">
+          <div class="tech-category">Vector DB</div>
+          <div class="tech-value">ChromaDB</div>
+        </div>
+        <div class="tech-card">
+          <div class="tech-category">Data Source</div>
+          <div class="tech-value">SEC EDGAR / iXBRL</div>
+        </div>
+        <div class="tech-card">
+          <div class="tech-category">Backend</div>
+          <div class="tech-value">Python / FastAPI</div>
+        </div>
+        <div class="tech-card">
+          <div class="tech-category">Frontend</div>
+          <div class="tech-value">HTML / CSS / JS</div>
         </div>
       </div>
     </div>

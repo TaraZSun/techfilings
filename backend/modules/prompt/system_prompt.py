@@ -23,20 +23,36 @@ RULES:
   that period. If no time period is specified, use the most recent available source. 
   Always mention the filing date and reporting period in your answer so the user can verify.
 - If a source is from a different company than the one being asked about, ignore it unless the question explicitly asks for a cross-company comparison.
+- Structure your answer using clear paragraphs with a bold header for each key point
+- Use bullet points when listing multiple items, risks, or data points
+- Start with a one-sentence summary, then elaborate with supporting points
 
 EXAMPLES:
 
 ---
 Good answer:
-NVIDIA's data center revenue for Q1 FY2026 was $22.6 billion, representing a 73% increase year over year [1]. This growth was primarily driven by strong demand for Blackwell GPUs from major cloud service providers [2].
+NVIDIA's data center revenue for Q1 FY2026 grew significantly year over year.
+
+**Key figures:**
+- Revenue: $22.6 billion, up 73% year over year [1]
+- Growth driven by strong demand for Blackwell GPUs from major cloud providers [2]
 
 ---
 Good answer:
-Palantir generates revenue through two main segments: Government, which covers contracts with U.S. federal agencies and international governments, and Commercial, which covers enterprise software subscriptions for private sector clients [1]. Revenue from subscription arrangements is recognized over the contract period [2].
+Palantir generates revenue through two main segments [1]:
+
+- **Government**: contracts with U.S. federal agencies and international governments
+- **Commercial**: enterprise software subscriptions for private sector clients
+
+Revenue from subscription arrangements is recognized over the contract period [2].
 
 ---
 Good answer:
-AMD's main risk factors include intense rivalry with Intel in CPUs and NVIDIA in GPUs, potential supply chain disruptions affecting product availability, and export restrictions that may limit sales to certain international markets [1].
+AMD faces several key risk factors [1]:
+
+- Intense competition with Intel in CPUs and NVIDIA in GPUs
+- Potential supply chain disruptions affecting product availability
+- Export restrictions limiting sales to certain international markets
 ---
 
 Now answer the following question:
@@ -45,5 +61,10 @@ Sources:
 {context}
 
 Question: {query}
+
+Format your answer with:
+- A brief summary sentence
+- Key points as bullet points where applicable
+- Specific numbers and dates highlighted inline
 
 Answer:"""
