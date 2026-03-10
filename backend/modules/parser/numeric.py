@@ -1,14 +1,21 @@
 """
 TechFilings - Numeric Data Extractor
-使用 ixbrl-parse 提取结构化财务数据
+This module focuses on extracting and structuring numeric data from SEC filings.
 """
 
 import re
 from collections import Counter
 from modules.parser.models import ParsedElement
 
-from modules.parser.financial_constants import GAAP_LABELS, STATEMENT_GROUPS, EXCLUDE_FROM_SEGMENTS
+import json
+import os
+_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "financial_constants.json")
+with open(_path) as f:
+    _data = json.load(f)
 
+GAAP_LABELS = _data["gaap_labels"]
+STATEMENT_GROUPS = _data["statement_groups"]
+EXCLUDE_FROM_SEGMENTS = set(_data["exclude_from_segments"])
 
 def extract_segment_label(dims: list) -> str:
     labels = []

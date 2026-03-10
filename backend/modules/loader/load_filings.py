@@ -1,26 +1,36 @@
 """
 TechFilings - Loader Module
+
+This module is responsible for downloading and managing SEC filings 
+for the specified companies. It interacts with the SEC EDGAR API to 
+obtain filing metadata, filters filings based on type and date, and 
+downloads the primary HTML documents for the filings. The downloaded 
+filings are saved locally, and a log of the download process is maintained.
+
 """
 
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import json
 import time
 import requests
-from typing import List, Dict
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import (
+import logging
+from modules.loader.classify_filings_type import count_by_category, classify_and_move
+from config import (  # noqa: E402
     SEC_EDGAR_API, 
     USER_AGENT, 
     COMPANIES, 
     FILING_TYPES, 
-    FILINGS_PER_TYPE,
-    RAW_DIR
+    RAW_DIR,
+    START_YEAR,
+    END_YEAR,
+    CLASSIFED_RAW_FILINGS
 )
+logger = logging.getLogger(__name__)
 
 
 class SECLoader:
-    
     def __init__(self):
         self.headers = {
             "User-Agent": USER_AGENT,
@@ -28,86 +38,59 @@ class SECLoader:
         }
         self.base_url = SEC_EDGAR_API
         
-    def get_company_filings(self, cik: str) -> Dict:
-        """
-        获取公司的所有filing列表
-        
-        Args:
-            cik: 公司的CIK代码
-            
-        Returns:
-            SEC API返回的filing数据
-        """
-        # 移除CIK前面的0
-        cik_clean = cik.lstrip("0")
+    def get_company_filings(self, cik: str) -> dict:
         url = f"{self.base_url}/submissions/CIK{cik.zfill(10)}.json"
-        
-        print(f"正在获取filing列表: {url}")
-        
+        logger.info(f"obtaining filings list: {url}")
         response = requests.get(url, headers=self.headers)
         response.raise_for_status()
-        
-        # SEC有访问频率限制，每秒最多10次请求
         time.sleep(0.1)
-        
         return response.json()
     
-    def filter_filings(self, filings_data: Dict, filing_types: List[str], limit: int) -> List[Dict]:
+    def filter_filings(self, filings_data: dict, 
+                       filing_types: list[str], 
+                       start_year: int, end_year:int) -> list[dict]:
         """
-        筛选指定类型的filing
-        
+        Filter filings based on type and limit per type
+
         Args:
-            filings_data: SEC API返回的完整数据
-            filing_types: 要筛选的filing类型，如["10-K", "10-Q"]
-            limit: 每种类型最多返回多少个
-            
+            filings_data: The raw filings data from SEC API
+            filing_types: list of filing types to filter (e.g., ["10-K", "10-Q"])
+            limit: Maximum number of filings to keep per type
         Returns:
-            筛选后的filing列表
+            A list of filtered filings with required information
         """
         recent_filings = filings_data.get("filings", {}).get("recent", {})
-        
         if not recent_filings:
-            print("警告: 没有找到recent filings数据")
+            logger.warning("No recent filings found.")
             return []
         
-        # 获取各个字段的列表
         forms = recent_filings.get("form", [])
         accession_numbers = recent_filings.get("accessionNumber", [])
         filing_dates = recent_filings.get("filingDate", [])
         primary_documents = recent_filings.get("primaryDocument", [])
         
         results = []
-        type_counts = {t: 0 for t in filing_types}
-        
         for i in range(len(forms)):
             form_type = forms[i]
-            
-            # 检查是否是我们要的类型
-            if form_type in filing_types and type_counts[form_type] < limit:
+            year = int(filing_dates[i][:4])
+            if form_type in filing_types and start_year <= year <= end_year:
                 results.append({
                     "form_type": form_type,
                     "accession_number": accession_numbers[i],
                     "filing_date": filing_dates[i],
                     "primary_document": primary_documents[i]
                 })
-                type_counts[form_type] += 1
-            
-            # 如果所有类型都达到限制，停止
-            if all(count >= limit for count in type_counts.values()):
-                break
         
         return results
     
     def get_primary_htm(self, cik: str, accession_number: str, primary_document: str) -> str:
         """
-        找到 filing 里真正的人类可读 HTM 文件
-        如果 primary_document 已经是正确的就直接返回
+        Obtain the correct primary HTM document name for a filing, especially when the original primary document is an XBRL file or an index file.
         """
-        # XBRL 特征：文件名里有 xbrl 或者是 R1.htm 这种
         if not any(x in primary_document.lower() for x in ['xbrl', 'r1.htm', 'r2.htm']):
-            return primary_document  # 已经是正确的
+            return primary_document 
 
-        # 获取 filing 的完整文件列表
+        # Obtain the list of files in the filing directory
         accession_clean = accession_number.replace("-", "")
         cik_clean = cik.lstrip("0")
         index_url = f"https://www.sec.gov/Archives/edgar/data/{cik_clean}/{accession_clean}/{accession_clean}-index.json"
@@ -118,97 +101,57 @@ class SECLoader:
 
             for f in files:
                 name = f.get("name", "")
-                # 找公司名开头的 .htm 文件（如 nvda-20250126.htm）
+               
                 if name.endswith(".htm") and not name.startswith("R") and "xbrl" not in name.lower():
                     return name
         except Exception as e:
-            print(f"获取文件列表失败: {e}")
+            logger.warning(f"No filings obtained: {e}")
 
-        return primary_document  # 找不到就用原来的
+        return primary_document 
     
-    def download_filing(self, cik: str, accession_number: str, primary_document: str, save_path: str) -> bool:
-        """
-        下载单个filing文件
-        
-        Args:
-            cik: 公司CIK
-            accession_number: Filing的accession number
-            primary_document: 主文档文件名
-            save_path: 保存路径
-            
-        Returns:
-            是否下载成功
-        """
-        # 构建URL
+    def download_filing(self, cik: str, accession_number: str, 
+                        primary_document: str, save_path: str) -> bool:
         accession_clean = accession_number.replace("-", "")
         url = f"https://www.sec.gov/Archives/edgar/data/{cik.lstrip('0')}/{accession_clean}/{primary_document}"
-        
-        print(f"正在下载: {url}")
         
         try:
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()
-            
-            # 确保目录存在
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            
-            # 保存文件
             with open(save_path, "w", encoding="utf-8") as f:
                 f.write(response.text)
-            
-            print(f"已保存: {save_path}")
-            
-            # 遵守SEC的访问频率限制
             time.sleep(0.1)
-            
             return True
             
         except Exception as e:
-            print(f"下载失败: {e}")
+            logger.warning(f"Failure: {e}")
             return False
     
-    def download_company_filings(self, company_name: str, company_info: Dict) -> List[Dict]:
-        """
-        下载一家公司的所有目标filing
+    def download_company_filings(self, company_name: str, company_info: dict) -> list[dict]:
         
-        Args:
-            company_name: 公司名称
-            company_info: 公司信息（包含cik和ticker）
-            
-        Returns:
-            下载结果列表
-        """
         cik = company_info["cik"]
         ticker = company_info["ticker"]
         
-        print(f"\n{'='*50}")
-        print(f"处理公司: {company_name} ({ticker})")
-        print(f"{'='*50}")
-        
-        # 获取filing列表
         try:
             filings_data = self.get_company_filings(cik)
         except Exception as e:
-            print(f"获取filing列表失败: {e}")
+            logger.warning(f"Failed to get filings for{company_name}: {e}")
             return []
         
-        # 筛选目标filing
-        target_filings = self.filter_filings(filings_data, FILING_TYPES, FILINGS_PER_TYPE)
-        
+       
+        target_filings = self.filter_filings(filings_data, FILING_TYPES, START_YEAR, END_YEAR)
         if not target_filings:
-            print("没有找到目标filing")
+            logger.warning("No target filings found after filtering.")
             return []
         
-        print(f"找到 {len(target_filings)} 个目标filing")
-        
-        # 下载每个filing
+        logger.info(f"find {len(target_filings)} filings")
+      
         results = []
         for filing in target_filings:
-            # 构建保存路径
+        
             filename = f"{ticker}_{filing['form_type']}_{filing['filing_date']}.html"
             save_path = os.path.join(RAW_DIR, ticker, filename)
-            
-            # 找正确的 HTM 文件
+       
             primary_doc = self.get_primary_htm(
                 cik, 
                 filing["accession_number"], 
@@ -221,7 +164,9 @@ class SECLoader:
                 primary_document=primary_doc,  
                 save_path=save_path
             )
-            
+            if success:
+                save_path=classify_and_move(save_path, ticker)
+        
             results.append({
                 **filing,
                 "company": company_name,
@@ -232,47 +177,34 @@ class SECLoader:
         
         return results
     
-    def download_all(self) -> List[Dict]:
-        """
-        下载所有目标公司的filing
-        
-        Returns:
-            所有下载结果
-        """
+    
+
+    def download_all(self) -> list[dict]:
         all_results = []
-        
         for company_name, company_info in COMPANIES.items():
             results = self.download_company_filings(company_name, company_info)
             all_results.extend(results)
-        
-        # 保存下载记录
+            
+            ticker = company_info["ticker"]
+            counts = count_by_category(os.path.join(CLASSIFED_RAW_FILINGS, ticker))
+            logger.info(f"{ticker} filing counts: {counts}")
+
         self._save_download_log(all_results)
-        
         return all_results
-    
-    def _save_download_log(self, results: List[Dict]) -> None:
-        """保存下载日志"""
+        
+    def _save_download_log(self, results: list[dict]) -> None:
         log_path = os.path.join(RAW_DIR, "download_log.json")
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
-        
         with open(log_path, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2, ensure_ascii=False)
         
-        print(f"\n下载日志已保存: {log_path}")
+        logger.info(f"\nDownloding log saved: {log_path}")
 
 
 def main():
-    """主函数"""
-    print("TechFilings - 财报下载工具")
-    
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     loader = SECLoader()
     results = loader.download_all()
-    
-    # 统计结果
-    success_count = sum(1 for r in results if r["download_success"])
-    total_count = len(results)
-    print(f"下载完成: {success_count}/{total_count} 成功")
-    
     return results
 
 

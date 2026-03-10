@@ -1,0 +1,53 @@
+{
+    "gaap_labels": {
+        "RevenueFromContractWithCustomerExcludingAssessedTax": "Revenue",
+        "Revenues": "Revenue",
+        "NetIncomeLoss": "Net Income",
+        "OperatingIncomeLoss": "Operating Income",
+        "GrossProfit": "Gross Profit",
+        "CostsAndExpenses": "Total Costs and Expenses",
+        "ResearchAndDevelopmentExpense": "R&D Expense",
+        "SellingGeneralAndAdministrativeExpense": "SG&A Expense",
+        "IncomeTaxExpenseBenefit": "Income Tax",
+        "EarningsPerShareBasic": "EPS Basic",
+        "EarningsPerShareDiluted": "EPS Diluted",
+        "Assets": "Total Assets",
+        "Liabilities": "Total Liabilities",
+        "StockholdersEquity": "Stockholders Equity",
+        "CashAndCashEquivalentsAtCarryingValue": "Cash and Equivalents",
+        "LongTermDebt": "Long Term Debt",
+        "CommonStockSharesOutstanding": "Shares Outstanding",
+        "NetCashProvidedByUsedInOperatingActivities": "Operating Cash Flow",
+        "NetCashProvidedByUsedInInvestingActivities": "Investing Cash Flow",
+        "NetCashProvidedByUsedInFinancingActivities": "Financing Cash Flow",
+        "AllocatedShareBasedCompensationExpense": "Stock-Based Compensation",
+        "AmortizationOfIntangibleAssets": "Amortization of Intangibles",
+        "DepreciationDepletionAndAmortization": "D&A",
+        "InterestExpense": "Interest Expense"
+    },
+    "statement_groups": {
+        "Income Statement": [
+            "Revenue", "NetIncomeLoss", "OperatingIncomeLoss", "GrossProfit",
+            "CostsAndExpenses", "ResearchAndDevelopmentExpense",
+            "SellingGeneralAndAdministrativeExpense", "IncomeTaxExpenseBenefit",
+            "EarningsPerShareBasic", "EarningsPerShareDiluted",
+            "RevenueFromContractWithCustomerExcludingAssessedTax",
+            "NetIncomeLossAvailableToCommonStockholdersBasic",
+            "IncomeLossFromContinuingOperations"
+        ],
+        "Balance Sheet": [
+            "Assets", "Liabilities", "StockholdersEquity",
+            "CashAndCashEquivalentsAtCarryingValue", "LongTermDebt",
+            "CommonStockSharesOutstanding"
+        ],
+        "Cash Flow": [
+            "NetCashProvidedByUsedInOperatingActivities",
+            "NetCashProvidedByUsedInInvestingActivities",
+            "NetCashProvidedByUsedInFinancingActivities"
+        ]
+    },
+    "exclude_from_segments": [
+        "Stockholders Equity", "Shares Outstanding", "Total Assets",
+        "Total Liabilities", "Cash and Equivalents", "Long Term Debt"
+    ]
+}

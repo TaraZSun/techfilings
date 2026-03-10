@@ -4,22 +4,25 @@ Uses OpenAI's GPT-4 to generate answers based on retrieved document sections.
 Retrieves relevant sections from filings and formats them for the prompt. 
 Also formats citations for frontend display.
 """
-
 import os
-from typing import List, Dict
 import sys
-from modules.searcher import DocumentSearcher
-from modules.prompt import system_prompt
-import openai
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from modules.searcher import DocumentSearcher
+import openai
+import yaml
 from config import OPENAI_CHAT_MODEL, TOP_K
+_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "retrieval_prompts.yaml")
+with open(_path) as f:
+    _prompts = yaml.safe_load(f)
+ANSWER_PROMPT = _prompts["answer_prompt"]
+
 
 class DocumentRetriever:
     def __init__(self):
         self.searcher = DocumentSearcher()
 
 
-    def format_sources_for_prompt(self, search_results: List[Dict]) -> str:
+    def format_sources_for_prompt(self, search_results: list[dict]) -> str:
         context_parts = []
         for i, result in enumerate(search_results):
             metadata = result["metadata"]
@@ -33,12 +36,12 @@ class DocumentRetriever:
             context_parts.append(f"{source_info}\n{result['text']}")
         return "\n\n---\n\n".join(context_parts)
 
-    def generate_answer(self, query: str, search_results: List[Dict]) -> str:
+    def generate_answer(self, query: str, search_results: list[dict]) -> str:
         if not search_results:
             return "No relevant information found in the filings."
 
         context = self.format_sources_for_prompt(search_results)
-        prompt = system_prompt.ANSWER_PROMPT.format(context=context, query=query)
+        prompt = ANSWER_PROMPT.format(context=context, query=query)
 
         try:
             client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
@@ -52,7 +55,7 @@ class DocumentRetriever:
         except Exception as e:
             return f"[Generation failed: {e}]"
 
-    def format_citations(self, search_results: List[Dict]) -> List[Dict]:
+    def format_citations(self, search_results: list[dict]) -> list[dict]:
         citations = []
         for i, result in enumerate(search_results):
             metadata = result["metadata"]
@@ -76,7 +79,7 @@ class DocumentRetriever:
         top_k: int = TOP_K,
         filter_company: str = None,
         filter_form_type: str = None,
-    ) -> Dict:
+    ) -> dict:
         search_results = self.searcher.search(
             query=query,
             top_k=top_k,

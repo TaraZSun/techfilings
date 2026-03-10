@@ -1,7 +1,7 @@
 # backend/tests/test_loader.py
 import pytest
 from unittest.mock import patch, MagicMock
-from modules.loader import SECLoader
+from techfilings.backend.modules.loader.load_filings import SECLoader
 import tempfile, os
 
 def test_filter_filings_returns_correct_types():
@@ -16,25 +16,26 @@ def test_filter_filings_returns_correct_types():
             }
         }
     }
-    results = loader.filter_filings(fake_data, ["10-K", "10-Q"], limit=2)
+    results = loader.filter_filings(fake_data, ["10-K", "10-Q"], start_year=2024, end_year=2024)
     forms = [r["form_type"] for r in results]
     assert "8-K" not in forms
-    assert forms.count("10-K") <= 2
 
-def test_filter_filings_respects_limit():
+def test_filter_filings_respects_year_range():
     loader = SECLoader()
     fake_data = {
         "filings": {
             "recent": {
                 "form": ["10-K", "10-K", "10-K"],
                 "accessionNumber": ["001", "002", "003"],
-                "filingDate": ["2024-01-01", "2024-02-01", "2024-03-01"],
+                "filingDate": ["2022-01-01", "2023-01-01", "2024-01-01"],
                 "primaryDocument": ["a.htm", "b.htm", "c.htm"]
             }
         }
     }
-    results = loader.filter_filings(fake_data, ["10-K"], limit=2)
-    assert len(results) == 2
+    results = loader.filter_filings(fake_data, ["10-K"], start_year=2023, end_year=2023)
+    assert len(results) == 1
+    assert results[0]["filing_date"] == "2023-01-01"
+
 
 @patch("modules.loader.requests.get")
 def test_download_filing_success(mock_get):
