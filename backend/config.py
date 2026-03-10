@@ -44,8 +44,7 @@ CHATS_DIR = "data/chats"
 
 INPUT_CSV = "data/qa_samples/sample_qa_v2.csv"
 OUTPUT_CSV = f"output/eval_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-
-CHROMA_PERSIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "chroma_db")
+CHROMA_PERSIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "embeddings", "chroma_db")
 
 CHUNK_SIZE = 1024
 CHUNK_OVERLAP = 64
