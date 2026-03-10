@@ -18,7 +18,7 @@ from pathlib import Path
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import  PROCESSED_DIR, CHUNKS_PATH, CHUNK_SIZE
+from techfilings.backend.config import  PROCESSED_DIR, CHUNKS_PATH, CHUNK_SIZE
 
 
 

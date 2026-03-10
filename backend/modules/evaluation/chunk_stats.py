@@ -9,7 +9,7 @@ import json
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from config import CHUNKS_PATH
+from techfilings.backend.config import CHUNKS_PATH
 
 
 def analyze_chunks():

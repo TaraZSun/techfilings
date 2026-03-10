@@ -10,8 +10,8 @@ import chromadb
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from openai import OpenAI
-from config import USE_LOCAL_EMBEDDING, OPENAI_EMBEDDING_MODEL
-from config import EMBEDDING_MODEL,OLLAMA_URL,CHROMA_PERSIST_DIR, TOP_K
+from techfilings.backend.config import USE_LOCAL_EMBEDDING, OPENAI_EMBEDDING_MODEL
+from techfilings.backend.config import EMBEDDING_MODEL,OLLAMA_URL,CHROMA_PERSIST_DIR, TOP_K
 from dotenv import load_dotenv
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")

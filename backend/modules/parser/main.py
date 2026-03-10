@@ -14,7 +14,7 @@ from modules.parser.models import ParsedElement, ParsedDocument
 from modules.parser.numeric import extract_numeric_data
 from modules.parser.text import extract_text_elements
 
-from config import RAW_DIR, PROCESSED_DIR
+from techfilings.backend.config import RAW_DIR, PROCESSED_DIR
 
 
 def parse_filename(filename: str) -> dict:

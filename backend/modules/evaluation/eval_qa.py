@@ -9,7 +9,7 @@ import csv
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from config import TOP_K, INPUT_CSV, OUTPUT_CSV
+from techfilings.backend.config import TOP_K, INPUT_CSV, OUTPUT_CSV
 from modules.retriever import DocumentRetriever
 
 

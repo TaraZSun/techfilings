@@ -13,7 +13,7 @@ from typing import List, Dict, Optional
 # 导入配置
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import (
+from techfilings.backend.config import (
     SEC_EDGAR_API, 
     USER_AGENT, 
     COMPANIES, 
