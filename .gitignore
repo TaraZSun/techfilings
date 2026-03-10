@@ -1,19 +1,13 @@
 .venv
 
 output/
-data/
+data
 
 # Python cache
 __pycache__/
 *.pyc
 *.pyo
 
-# Vector DB
-
-
-# Environment
 .env
 
-# Data files
-data
-!data/chroma_db/
+.pytest_cache/

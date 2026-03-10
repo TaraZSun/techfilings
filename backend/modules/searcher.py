@@ -1,6 +1,5 @@
 """
-TechFilings - Searcher 模块
-使用本地 nomic-embed-text 在向量数据库中检索相关内容
+TechFilings - Searcher module
 """
 
 import os
@@ -10,8 +9,11 @@ import chromadb
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from openai import OpenAI
-from techfilings.backend.config import USE_LOCAL_EMBEDDING, OPENAI_EMBEDDING_MODEL
-from techfilings.backend.config import EMBEDDING_MODEL,OLLAMA_URL,CHROMA_PERSIST_DIR, TOP_K
+from config import (EMBEDDING_MODEL,OLLAMA_URL,
+                            CHROMA_PERSIST_DIR, TOP_K,
+                            USE_LOCAL_EMBEDDING, 
+                            OPENAI_EMBEDDING_MODEL)
+
 from dotenv import load_dotenv
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -52,7 +54,6 @@ class DocumentSearcher:
     ) -> List[Dict]:
         query_embedding = self.get_query_embedding(query)
 
-        # 构建筛选条件（兼容新旧 metadata 字段）
         where_filter = None
         if filter_ticker or filter_filing_type or filter_period:
             conditions = []

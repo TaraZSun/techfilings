@@ -11,20 +11,12 @@ import json
 import re
 from pathlib import Path
 
-# ─────────────────────────────────────────────
-# 路径配置
-# ─────────────────────────────────────────────
 
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from techfilings.backend.config import  PROCESSED_DIR, CHUNKS_PATH, CHUNK_SIZE
+from config import  PROCESSED_DIR, CHUNKS_PATH, CHUNK_SIZE
 
-
-
-# ─────────────────────────────────────────────
-# 从文件名提取元数据
-# ─────────────────────────────────────────────
 
 def parse_filename(filename: str) -> dict:
     """
@@ -45,16 +37,11 @@ def parse_filename(filename: str) -> dict:
 # ─────────────────────────────────────────────
 
 def split_text(text: str, chunk_size: int = CHUNK_SIZE) -> list[str]:
-    """
-    层级切割：段落 → 句子
-    - 优先按段落（\n\n）切
-    - 段落超过 chunk_size 再按句子切
-    - 不使用 overlap，避免单词截断
-    """
+   
     if len(text) <= chunk_size:
         return [text.strip()] if text.strip() else []
 
-    # 第一层：按段落切
+    # chunk according to paragraphs
     paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
 
     chunks = []
@@ -62,7 +49,7 @@ def split_text(text: str, chunk_size: int = CHUNK_SIZE) -> list[str]:
         if len(para) <= chunk_size:
             chunks.append(para)
         else:
-            # 第二层：按句子切
+            # chunk according to sentences
             sentences = re.split(r'(?<=[.!?])\s+', para)
             current = ""
             for sent in sentences:
@@ -79,9 +66,6 @@ def split_text(text: str, chunk_size: int = CHUNK_SIZE) -> list[str]:
 
 
 
-# ─────────────────────────────────────────────
-# 主 chunking 逻辑
-# ─────────────────────────────────────────────
 
 def chunk_document(json_path: str) -> list[dict]:
     with open(json_path, "r", encoding="utf-8") as f:
@@ -91,7 +75,6 @@ def chunk_document(json_path: str) -> list[dict]:
     chunks = []
     chunk_idx = 0
 
-    # 按 section 积累文字
     pending_texts = []
     pending_section = "UNKNOWN"
 
@@ -158,10 +141,6 @@ def chunk_document(json_path: str) -> list[dict]:
     flush_pending()
     return chunks
 
-# ─────────────────────────────────────────────
-# 批量处理所有 parsed JSON
-# ─────────────────────────────────────────────
-
 def chunk_all():
     processed_path = Path(PROCESSED_DIR)
     json_files = list(processed_path.glob("*_parsed.json"))
@@ -180,7 +159,6 @@ def chunk_all():
         print(f"  {json_file.name}: 表格={tables} 文字={texts} 共{len(chunks)}个chunk")
         all_chunks.extend(chunks)
 
-    # 保存到 chunks.json（embedder.py 读取这个文件）
     with open(CHUNKS_PATH, "w", encoding="utf-8") as f:
         json.dump(all_chunks, f, ensure_ascii=False, indent=2)
 
@@ -188,10 +166,6 @@ def chunk_all():
     print(f"[✓] 已保存到 {CHUNKS_PATH}")
     print(f"\n下一步运行: python modules/embedder.py")
 
-
-# ─────────────────────────────────────────────
-# 入口
-# ─────────────────────────────────────────────
 
 if __name__ == "__main__":
     chunk_all()

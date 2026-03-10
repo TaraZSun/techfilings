@@ -1,19 +1,15 @@
 """
-TechFilings - Loader 模块
-从SEC EDGAR下载10-K和10-Q文件
+TechFilings - Loader Module
 """
 
 import os
 import json
 import time
 import requests
-from pathlib import Path
-from typing import List, Dict, Optional
-
-# 导入配置
+from typing import List, Dict
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from techfilings.backend.config import (
+from config import (
     SEC_EDGAR_API, 
     USER_AGENT, 
     COMPANIES, 
@@ -24,7 +20,6 @@ from techfilings.backend.config import (
 
 
 class SECLoader:
-    """从SEC EDGAR下载财报文件"""
     
     def __init__(self):
         self.headers = {

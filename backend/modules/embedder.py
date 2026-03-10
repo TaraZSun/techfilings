@@ -1,6 +1,5 @@
 """
-TechFilings - Embedder 模块
-使用 nomic-embed-text (本地 Ollama) 生成文本向量，存入 Chroma
+TechFilings - Embedder Module
 """
 
 import os
@@ -16,7 +15,7 @@ import sys
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from techfilings.backend.config import (USE_LOCAL_EMBEDDING,  # noqa: E402
+from config import (USE_LOCAL_EMBEDDING,  # noqa: E402
                     OPENAI_EMBEDDING_MODEL, 
                     EMBEDDING_MODEL, 
                     OLLAMA_URL,

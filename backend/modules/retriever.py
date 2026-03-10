@@ -12,7 +12,7 @@ from modules.searcher import DocumentSearcher
 from modules.prompt import system_prompt
 import openai
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from techfilings.backend.config import OPENAI_CHAT_MODEL, TOP_K
+from config import OPENAI_CHAT_MODEL, TOP_K
 
 class DocumentRetriever:
     def __init__(self):

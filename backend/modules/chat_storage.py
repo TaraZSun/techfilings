@@ -4,7 +4,7 @@ import requests
 from datetime import datetime
 from typing import List, Dict
 
-from techfilings.backend.config import OLLAMA_URL, CHAT_MODEL, CHATS_DIR
+from config import OLLAMA_URL, CHAT_MODEL, CHATS_DIR
 
 
 def init():
