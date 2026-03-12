@@ -1,7 +1,7 @@
 requests>=2.28.0
 beautifulsoup4>=4.11.0
 lxml>=4.9.0
-chromadb==0.5.23
+chromadb==1.5.2
 openai>=1.0.0
 python-dotenv>=1.0.0
 tqdm>=4.65.0
