@@ -25,13 +25,12 @@ class DocumentRetriever:
     def format_sources_for_prompt(self, search_results: list[dict]) -> str:
         context_parts = []
         for i, result in enumerate(search_results):
-            metadata = result["metadata"]
+            metadata = result["metadata"]      
             source_info = (
-                f"[Source {i+1}] "
-                f"{metadata.get('company', metadata.get('ticker', ''))} "
-                f"{metadata.get('form_type', metadata.get('filing_type', ''))} "
-                f"({metadata.get('period', metadata.get('filing_date', ''))}) "
-                f"- {metadata.get('section', metadata.get('section_title', ''))}"
+                f"[Source {i+1} | Company: {metadata.get('company', metadata.get('ticker', '')) } | "
+                f"Filing: {metadata.get('form_type', metadata.get('filing_type', ''))} | "
+                f"Period: {metadata.get('period', metadata.get('filing_date', ''))} | "
+                f"Section: {metadata.get('section', metadata.get('section_title', ''))}]"
             )
             context_parts.append(f"{source_info}\n{result['text']}")
         return "\n\n---\n\n".join(context_parts)
@@ -47,7 +46,10 @@ class DocumentRetriever:
             client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
             response = client.chat.completions.create(
                 model=OPENAI_CHAT_MODEL,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[
+                    {"role": "system", "content": "You are a financial analyst assistant. Answer ONLY based on the provided sources. Do not infer, extrapolate, or add information not explicitly stated in the context. If the context is insufficient, say so."},
+                    {"role": "user", "content": prompt}
+                ],
                 temperature=0,
                 max_tokens=1000,
             )
@@ -96,3 +98,13 @@ class DocumentRetriever:
             "citations": citations,
             "num_sources": len(citations),
         }
+    def retrieve_multi_company(self, query, companies, top_k_per_company=3):
+        all_results = []
+        for company in companies:
+            results = self.searcher.search(
+                query=query,
+                top_k=top_k_per_company,
+                filter_ticker=company,
+            )
+            all_results.extend(results)
+        return all_results

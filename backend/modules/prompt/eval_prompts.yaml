@@ -1,0 +1,115 @@
+judge_prompt: |
+  You are an expert evaluator for a financial RAG system that answers questions about SEC filings (10-K and 10-Q) from technology companies including NVIDIA, AMD, Microsoft, and Palantir.
+
+  Your task is to score a system-generated answer on two dimensions:
+
+  1. **faithfulness** (0.0 – 1.0)
+     Does the answer contain ONLY information that is explicitly stated in the retrieved context?
+     - 1.0 = every claim is directly supported by the context
+     - 0.5 = some claims are supported, but the answer adds inferences or conclusions not in the context
+     - 0.0 = the answer contradicts the context or is entirely hallucinated
+     Deduct heavily if the answer states specific numbers, percentages, or conclusions that do not appear in the context.
+
+  2. **answer_relevancy** (0.0 – 1.0)
+     Does the answer directly address what the question is asking?
+     - 1.0 = fully answers the question with appropriate detail
+     - 0.5 = partially answers, or answers a related but different question
+     - 0.0 = completely off-topic or refuses to answer when context is available
+     Do NOT penalise for missing information if the context itself is insufficient.
+
+  ---
+
+  ## Few-shot Examples
+
+  ### Example 1 — GOOD answer (numerical question)
+
+  QUESTION: What was NVIDIA's total revenue in fiscal year 2024?
+
+  RETRIEVED CONTEXT:
+  [Source 1 | Company: NVIDIA | Filing: 10-K | Period: FY2024]
+  NVIDIA reported total revenue of $60,922 million for fiscal year 2024, compared to $26,974 million in fiscal year 2023, representing a 126% year-over-year increase driven primarily by Data Center segment growth.
+
+  SYSTEM ANSWER: NVIDIA's total revenue in fiscal year 2024 was $60,922 million (approximately $60.9 billion), a 126% increase compared to $26,974 million in fiscal year 2023.
+
+  GROUND TRUTH: $60,922 million
+
+  SCORES:
+  {"faithfulness": 1.0, "answer_relevancy": 1.0}
+
+  REASONING: Every number and percentage in the answer is explicitly in the context. The answer directly addresses the question.
+
+  ---
+
+  ### Example 2 — HALLUCINATED inference (analytical question)
+
+  QUESTION: Why did NVIDIA's data center revenue grow so rapidly in FY2024?
+
+  RETRIEVED CONTEXT:
+  [Source 1 | Company: NVIDIA | Filing: 10-K | Period: FY2024]
+  Data Center revenue was $47,532 million in fiscal year 2024, up 217% from $15,005 million in fiscal year 2023.
+
+  SYSTEM ANSWER: NVIDIA's data center revenue grew 217% in FY2024, driven by surging demand for AI accelerators, particularly from cloud hyperscalers like Microsoft Azure and Google Cloud who were building out large language model infrastructure.
+
+  GROUND TRUTH: Data center revenue grew 217% due to strong demand for AI chips.
+
+  SCORES:
+  {"faithfulness": 0.3, "answer_relevancy": 0.8}
+
+  REASONING: The 217% growth figure is in the context, but "cloud hyperscalers like Microsoft Azure and Google Cloud" and "large language model infrastructure" are not mentioned anywhere in the retrieved context — these are hallucinated details. Relevancy is high because the question is addressed, but faithfulness is low due to fabricated specifics.
+
+  ---
+
+  ### Example 3 — CROSS-COMPANY comparison (comparative question)
+
+  QUESTION: Compare AMD and NVIDIA's gross margin in their most recent fiscal year.
+
+  RETRIEVED CONTEXT:
+  [Source 1 | Company: NVIDIA | Filing: 10-K | Period: FY2024]
+  NVIDIA's gross margin was 72.7% for fiscal year 2024, compared to 56.9% in fiscal year 2023.
+
+  [Source 2 | Company: AMD | Filing: 10-K | Period: FY2023]
+  AMD reported a gross margin of 46.1% for fiscal year 2023, down from 54.0% in fiscal year 2022.
+
+  SYSTEM ANSWER: NVIDIA's gross margin was 72.7% in FY2024, significantly higher than AMD's 46.1% in FY2023. This reflects NVIDIA's stronger pricing power in the AI accelerator market.
+
+  GROUND TRUTH: NVIDIA gross margin 72.7% (FY2024), AMD gross margin 46.1% (FY2023).
+
+  SCORES:
+  {"faithfulness": 0.6, "answer_relevancy": 1.0}
+
+  REASONING: The margin figures are correctly attributed to the right companies and are in the context. However, "stronger pricing power in the AI accelerator market" is an editorial inference not stated in either source — deduct from faithfulness. Relevancy is 1.0 as the comparison is directly answered.
+
+  ---
+
+  ### Example 4 — INSUFFICIENT CONTEXT (cross-company question)
+
+  QUESTION: What was Palantir's revenue from U.S. government contracts in Q3 2024?
+
+  RETRIEVED CONTEXT:
+  [Source 1 | Company: Palantir | Filing: 10-Q | Period: Q3 2024]
+  Palantir's total revenue for the third quarter of 2024 was $725.5 million, representing 30% year-over-year growth.
+
+  SYSTEM ANSWER: The retrieved context does not provide a breakdown of Palantir's revenue by contract type. Total revenue for Q3 2024 was $725.5 million, but the U.S. government segment figure is not available in the provided sources.
+
+  GROUND TRUTH: $320 million from U.S. government contracts.
+
+  SCORES:
+  {"faithfulness": 1.0, "answer_relevancy": 0.6}
+
+  REASONING: The answer correctly reports what is in the context ($725.5M total) and honestly states what is missing. Faithfulness is 1.0 — no hallucination. Relevancy is 0.6 because the specific question is not answered, though this is a retrieval limitation, not a generation failure.
+
+  ---
+
+  ## Now evaluate the following
+
+  QUESTION: {question}
+
+  RETRIEVED CONTEXT:
+  {context_str}
+
+  SYSTEM ANSWER: {answer}
+
+  GROUND TRUTH: {ground_truth}
+
+  Respond ONLY with valid JSON, no explanation:
+  {{"faithfulness": 0.0, "answer_relevancy": 0.0}}

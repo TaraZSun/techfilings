@@ -3,8 +3,11 @@
 > **Query SEC filings in plain English.** Vector search over iXBRL-parsed 10-K and 10-Q filings — grounded answers with inline citations, in seconds.
 
 ## What This Project Does
+
 SEC filings are dense. A single 10-K can run 200+ pages of financial data, risk disclosures, and management commentary — all in iXBRL format, where structured financial tags are embedded directly in HTML alongside layout artifacts and footnotes.
+
 TechFilings makes these documents queryable. Ask a question in plain English, get an answer grounded in the source filing, with a citation back to the exact section. No scrolling, no manual cross-referencing.
+
 The core engineering challenge is the parsing layer: iXBRL documents can't be treated as plain text. TechFilings implements an iXBRL-aware parser that separates financial content from structural noise, and routes table extraction through a complexity classifier — BeautifulSoup for simple tables, LLM-based extraction for complex nested structures.
 
 **What TechFilings returns in seconds:**
@@ -13,20 +16,23 @@ The core engineering challenge is the parsing layer: iXBRL documents can't be tr
 >
 > *Sources: NVIDIA 10-K FY2024 · Item 1A · [1], NVIDIA 10-Q Q3 2024 · Item 1A · [2]*
 
+---
 
 ## Features
 
 - **iXBRL-aware parsing** — distinguishes financial data from layout artifacts in SEC filings
-- **Complexity-based table routing** — BeautifulSoup for simple tables, LLM fallback for complex structures
+- **Complexity-based table routing** — BeautifulSoup for simple tables, LLM fallback for complex nested structures
 - **Section-aware chunking** — every chunk carries its filing section for precise citation
 - **Source-grounded answers** — every response cites the exact filing, form type, and section
 - **Collapsible citations** — expandable source passages in the chat UI
 - **User feedback collection** — stored in Supabase after every 3 questions
 
+---
+
 ## Tech Stack
 
 | Component | Technology |
-|-----------|-----------|
+|---|---|
 | LLM | gpt-4o-mini |
 | Embeddings | text-embedding-3-small |
 | Vector DB | ChromaDB |
@@ -34,6 +40,9 @@ The core engineering challenge is the parsing layer: iXBRL documents can't be tr
 | Backend | Python / FastAPI |
 | Frontend | HTML / CSS / JS |
 | Feedback Storage | Supabase |
+| Evaluation | RAGAS / LLM-as-a-Judge (gpt-4o-mini) |
+
+---
 
 ## Coverage
 
@@ -41,39 +50,70 @@ The core engineering challenge is the parsing layer: iXBRL documents can't be tr
 
 **Filings:** 10-K (annual) and 10-Q (quarterly)
 
-**Date:** 2025-2026
+**Period:** 2025 – 2026
+
+---
+
+## Evaluation
+
+Answer quality is evaluated using two complementary frameworks:
+
+- **LLM-as-a-Judge** — a custom OpenAI-based judge scoring faithfulness and answer relevancy against ground truth, with few-shot examples tailored to financial filing Q&A
+- **RAGAS** — standardised RAG evaluation metrics (`faithfulness`, `answer_relevancy`) for ongoing monitoring
+
+Evaluated on 15 questions across four question types: `numerical`, `analytical`, `comparative`, and `cross_company`.
+
+*Judge LLM: gpt-4o-mini · Embeddings: text-embedding-3-small*
+
+---
 
 ## Project Structure
 
 ```
 techfilings/
 ├── backend/
-│   ├── main.py                  # FastAPI app, API endpoints
+│   ├── main.py                        # FastAPI app, API endpoints
+│   ├── config.py                      # Model and path configuration
 │   ├── modules/
-│   │   ├── loader, parser, chunker, embedding, searcher, retriever
+│   │   ├── loader.py                  # SEC EDGAR fetcher
+│   │   ├── parser.py                  # iXBRL-aware HTML parser
+│   │   ├── chunker.py                 # Section-aware chunking
+│   │   ├── embedding.py               # OpenAI embedding pipeline
+│   │   ├── searcher.py                # ChromaDB vector search
+│   │   ├── retriever.py               # Answer generation + citations
+│   │   └── evaluation/
+│   │       ├── eval_qa_ragas.py       # RAGAS evaluation pipeline
+│   │       ├── eval_qa_llm_as_a_judge.py # OpenAI judge evaluation pipeline
+│   │       └── prompt/
+│   │           ├── retrieval_prompts.yaml
+│   │           └── eval_prompts.yaml  # Judge prompt with few-shot examples
+│   └── embeddings/
+│       └── chroma_db/                 # Persisted vector store
 └── frontend/
-    ├── index.html               # Landing page
-    ├── chat.html                # Chat interface
-    ├── style.css                # Shared styles
-    └── app.js                   # Chat logic, citation rendering
+    ├── index.html                     # Landing page
+    ├── chat.html                      # Chat interface
+    ├── style.css                      # Shared styles
+    └── app.js                         # Chat logic, citation rendering
 ```
+
+---
 
 ## Getting Started
 
 ### Prerequisites
 
-- Python 3.10+
-- [Ollama](https://ollama.com) with `llama3.2` model pulled (Optional)
-- OpenAI API key (for embeddings)
+- Python 3.11+
+- OpenAI API key
+- Ollama with `llama3.2` pulled *(optional — only needed for local inference fallback)*
 
 ### Installation
 
 ```bash
 git clone https://github.com/TaraZSun/techfilings.git
 cd techfilings
-python -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 ### Environment Variables
@@ -82,8 +122,8 @@ Create a `.env` file in `backend/`:
 
 ```env
 OPENAI_API_KEY=your_openai_key
-SUPABASE_URL=your_supabase_url       # optional
-SUPABASE_KEY=your_supabase_key       # optional
+SUPABASE_URL=your_supabase_url    # optional
+SUPABASE_KEY=your_supabase_key    # optional
 ```
 
 ### Run
@@ -95,6 +135,8 @@ uvicorn main:app --reload --port 8001
 
 Serve the frontend via Live Server or any static file server, then open `frontend/index.html`.
 
+---
+
 ## Example Queries
 
 - "What was NVIDIA's R&D spend in FY2024?"
@@ -102,6 +144,8 @@ Serve the frontend via Live Server or any static file server, then open `fronten
 - "Palantir revenue breakdown by segment"
 - "What export control risks did NVIDIA disclose in their latest 10-K?"
 - "How did AMD describe competition risks in their most recent 10-Q?"
+
+---
 
 ## License
 

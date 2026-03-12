@@ -5,4 +5,14 @@ __pycache__/
 .pytest_cache/
 .env
 output/
-data/
+data/venv/
+.venv/
+venv/
+.venv/
+# Eval results
+backend/data/results/*.json
+# Raw filings data
+backend/data/filings/*.html
+data/**/*.json
+data/**/*.html
+data/qa_samples/*.csv
