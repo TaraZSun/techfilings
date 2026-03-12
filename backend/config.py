@@ -33,7 +33,7 @@ CHAT_MODEL = "llama3.2:latest"
 # ── Paths ──────────────────────────────────────────────────────────────────
 _BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR       = os.path.join(_BASE, "data")
-RAW_DIR        = os.path.join(DATA_DIR, "raw")
+RAW_DIR        = os.path.join(DATA_DIR, "raw", "classified_raw_filings")
 PROCESSED_DIR  = os.path.join(DATA_DIR, "processed")
 CHUNKS_PATH    = os.path.join(PROCESSED_DIR, "chunks.json")
 CHROMA_PERSIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "embeddings", "chroma_db")

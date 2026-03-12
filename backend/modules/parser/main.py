@@ -14,7 +14,7 @@ from modules.parser.models import ParsedElement, ParsedDocument
 from modules.parser.numeric import extract_numeric_data
 from modules.parser.text import extract_text_elements
 
-from techfilings.backend.config import RAW_DIR, PROCESSED_DIR
+from config import CLASSIFED_RAW_FILINGS as RAW_DIR, PROCESSED_DIR
 
 
 def parse_filename(filename: str) -> dict:
@@ -66,7 +66,7 @@ def parse_all():
     raw_path = Path(RAW_DIR)
     Path(PROCESSED_DIR).mkdir(parents=True, exist_ok=True)
 
-    html_files = list(raw_path.glob("*/*.html")) + list(raw_path.glob("*/*.htm"))
+    html_files = list(raw_path.glob("**/*.html")) + list(raw_path.glob("**/*.htm"))
     if not html_files:
         print(f"[!] No HTML files found in {RAW_DIR}")
         return

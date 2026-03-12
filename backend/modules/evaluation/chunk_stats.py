@@ -8,8 +8,11 @@ and identify any potential issues or biases in the chunking process.
 import json
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from techfilings.backend.config import CHUNKS_PATH
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "backend"))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import CHUNKS_PATH
 
 
 def analyze_chunks():
