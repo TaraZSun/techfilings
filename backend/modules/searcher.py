@@ -7,6 +7,7 @@ import requests
 from typing import List, Dict, Optional
 import chromadb
 import sys
+from rank_bm25 import BM25Okapi
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from openai import OpenAI
 from config import (EMBEDDING_MODEL,OLLAMA_URL,
@@ -23,10 +24,16 @@ class DocumentSearcher:
     def __init__(self, collection_name: str = "techfilings"):
         self.collection_name = collection_name
         self.embedding_model = EMBEDDING_MODEL
-
-        # 连接 Chroma
         self.chroma_client = chromadb.PersistentClient(path=CHROMA_PERSIST_DIR)
         self.collection = self.chroma_client.get_collection(name=collection_name)
+        
+        # Preload all documents for BM25 search
+        all_data = self.collection.get(include=["documents", "metadatas"])
+        self.bm25_ids = all_data["ids"]
+        self.bm25_docs = all_data["documents"]
+        self.bm25_metadatas = all_data["metadatas"]
+        corpus = [doc.lower().split() for doc in self.bm25_docs]
+        self.bm25 = BM25Okapi(corpus)
 
     def get_query_embedding(self, query: str) -> list[float]:
         if USE_LOCAL_EMBEDDING:
@@ -44,14 +51,10 @@ class DocumentSearcher:
             )
             return response.data[0].embedding
 
-    def search(
-        self,
-        query: str,
-        top_k: int = TOP_K,
-        filter_ticker: Optional[str] = None,
-        filter_filing_type: Optional[str] = None,
-        filter_period: Optional[str] = None,
-    ) -> List[Dict]:
+    def search(self, query, top_k=TOP_K, filter_ticker=None,
+           filter_filing_type=None, filter_period=None):
+
+        # 1. embedding dense search
         query_embedding = self.get_query_embedding(query)
 
         where_filter = None
@@ -63,20 +66,19 @@ class DocumentSearcher:
                 conditions.append({"form_type": {"$eq": filter_filing_type}})
             if filter_period:
                 conditions.append({"period": {"$eq": filter_period}})
-
             where_filter = conditions[0] if len(conditions) == 1 else {"$and": conditions}
 
         results = self.collection.query(
             query_embeddings=[query_embedding],
-            n_results=top_k,
+            n_results=top_k * 2,
             where=where_filter,
             include=["documents", "metadatas", "distances"]
         )
 
-        search_results = []
+        dense_results = []
         if results and results["ids"] and results["ids"][0]:
             for i in range(len(results["ids"][0])):
-                search_results.append({
+                dense_results.append({
                     "chunk_id": results["ids"][0][i],
                     "text": results["documents"][0][i],
                     "metadata": results["metadatas"][0][i],
@@ -84,8 +86,42 @@ class DocumentSearcher:
                     "similarity": 1 / (1 + results["distances"][0][i])
                 })
 
-        return search_results
+        # 2. BM25 sparse search
+        tokens = query.lower().split()
+        bm25_scores = self.bm25.get_scores(tokens)
+        top_sparse_idx = sorted(range(len(bm25_scores)),
+                                key=lambda i: bm25_scores[i], reverse=True)[:top_k * 2]
 
+        sparse_results = []
+        for idx in top_sparse_idx:
+            meta = self.bm25_metadatas[idx]
+            if filter_ticker and meta.get("company") != filter_ticker:
+                continue
+            if filter_filing_type and meta.get("form_type") != filter_filing_type:
+                continue
+            if filter_period and meta.get("period") != filter_period:
+                continue
+            sparse_results.append({
+                "chunk_id": self.bm25_ids[idx],
+                "text": self.bm25_docs[idx],
+                "metadata": meta,
+                "similarity": float(bm25_scores[idx])
+            })
+
+        # 3. RRF fusion
+        rrf_scores = {}
+        id_to_result = {}
+        for rank, r in enumerate(dense_results):
+            cid = r["chunk_id"]
+            rrf_scores[cid] = rrf_scores.get(cid, 0) + 1 / (60 + rank + 1)
+            id_to_result[cid] = r
+        for rank, r in enumerate(sparse_results):
+            cid = r["chunk_id"]
+            rrf_scores[cid] = rrf_scores.get(cid, 0) + 1 / (60 + rank + 1)
+            id_to_result[cid] = r
+
+        sorted_ids = sorted(rrf_scores, key=lambda x: rrf_scores[x], reverse=True)
+        return [id_to_result[cid] for cid in sorted_ids[:top_k]]
     def search_by_company(self, query: str, company: str, top_k: int = TOP_K) -> List[Dict]:
         return self.search(query, top_k=top_k, filter_ticker=company)
 
@@ -95,38 +131,3 @@ class DocumentSearcher:
     def search_10q_only(self, query: str, top_k: int = TOP_K) -> List[Dict]:
         return self.search(query, top_k=top_k, filter_filing_type="10-Q")
 
-
-def main():
-    print("TechFilings - 搜索测试")
-    print("=" * 50)
-
-    searcher = DocumentSearcher()
-
-    test_queries = [
-        "What is NVIDIA's revenue from data center?",
-        "What are the risk factors for AMD?",
-        "Palantir government contracts"
-    ]
-
-    for query in test_queries:
-        print(f"\n查询: {query}")
-        print("-" * 50)
-
-        results = searcher.search(query, top_k=3)
-
-        for i, result in enumerate(results):
-            metadata = result["metadata"]
-            print(f"\n结果 {i+1}:")
-            print(f"  公司: {metadata.get('company', '')}")
-            print(f"  文件: {metadata.get('form_type', '')} ({metadata.get('period', '')})")
-            print(f"  章节: {metadata.get('section', '')}")
-            print(f"  类型: {metadata.get('type', '')}")
-            print(f"  相似度: {result['similarity']:.3f}")
-            print(f"  预览: {result['text'][:200]}...")
-
-    print(f"\n{'=' * 50}")
-    print("搜索测试完成!")
-
-
-if __name__ == "__main__":
-    main()

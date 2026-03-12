@@ -10,6 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from modules.searcher import DocumentSearcher
 import openai
 import yaml
+from sentence_transformers import CrossEncoder
 from config import OPENAI_CHAT_MODEL, TOP_K
 _path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompt", "retrieval_prompts.yaml")
 with open(_path) as f:
@@ -25,7 +26,7 @@ COMPANY_ALIASES = {
 class DocumentRetriever:
     def __init__(self):
         self.searcher = DocumentSearcher()
-
+        self.reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
     def format_sources_for_prompt(self, search_results: list[dict]) -> str:
         context_parts = []
@@ -98,6 +99,19 @@ class DocumentRetriever:
             if any(alias in query_lower for alias in aliases):
                 found.append(ticker)
         return found
+    
+    def rerank(self, query: str, search_results: list[dict], top_k: int) -> list[dict]:
+        if not search_results:
+            return search_results
+        
+        pairs = [[query, result["text"]] for result in search_results]
+        scores = self.reranker.predict(pairs)
+        ranked = sorted(
+            zip(scores, search_results),
+            key=lambda x: x[0],
+            reverse=True
+        )
+        return [result for _, result in ranked[:top_k]]
 
     def retrieve_and_answer(
         self,
@@ -118,7 +132,7 @@ class DocumentRetriever:
                 filter_ticker=filter_company or (companies[0] if companies else None),
                 filter_filing_type=filter_form_type,
             )
-
+        search_results = self.rerank(query, search_results, top_k)
         answer = self.generate_answer(query, search_results)
         citations = self.format_citations(search_results)
 

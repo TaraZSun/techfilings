@@ -33,7 +33,7 @@ The core engineering challenge is the parsing layer: iXBRL documents can't be tr
 
 | Component | Technology |
 |---|---|
-| LLM | gpt-4o-mini |
+| LLM | gpt-4o-mini (generation + query expansion) |
 | Embeddings | text-embedding-3-small |
 | Vector DB | ChromaDB |
 | Data Source | SEC EDGAR / iXBRL |
@@ -41,6 +41,8 @@ The core engineering challenge is the parsing layer: iXBRL documents can't be tr
 | Frontend | HTML / CSS / JS |
 | Feedback Storage | Supabase |
 | Evaluation | RAGAS / LLM-as-a-Judge (gpt-4o-mini) |
+| Reranking | cross-encoder/ms-marco-MiniLM-L-6-v2 |
+| Retrieval | Hybrid (ChromaDB dense + BM25 sparse, RRF fusion) |
 
 ---
 
