@@ -11,7 +11,7 @@ from modules.searcher import DocumentSearcher
 import openai
 import yaml
 from config import OPENAI_CHAT_MODEL, TOP_K
-_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "retrieval_prompts.yaml")
+_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompt", "retrieval_prompts.yaml")
 with open(_path) as f:
     _prompts = yaml.safe_load(f)
 ANSWER_PROMPT = _prompts["answer_prompt"]

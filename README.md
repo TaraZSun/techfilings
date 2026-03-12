@@ -27,8 +27,8 @@ The core engineering challenge is the parsing layer: iXBRL documents can't be tr
 
 | Component | Technology |
 |-----------|-----------|
-| LLM | Llama 3.2 (Ollama) |
-| Embeddings | text-embedding-ada-002 (OpenAI) |
+| LLM | gpt-4o-mini |
+| Embeddings | text-embedding-3-small |
 | Vector DB | ChromaDB |
 | Data Source | SEC EDGAR / iXBRL |
 | Backend | Python / FastAPI |
@@ -37,9 +37,11 @@ The core engineering challenge is the parsing layer: iXBRL documents can't be tr
 
 ## Coverage
 
-**Companies:** NVDA · AMD · PLTR
+**Companies:** NVDA · AMD · PLTR · MSFT
 
-**Filings:** 10-K (annual) and 10-Q (quarterly), FY2024
+**Filings:** 10-K (annual) and 10-Q (quarterly)
+
+**Date:** 2025-2026
 
 ## Project Structure
 
@@ -48,11 +50,7 @@ techfilings/
 ├── backend/
 │   ├── main.py                  # FastAPI app, API endpoints
 │   ├── modules/
-│   │   ├── parser/              # iXBRL parsing, table extraction, chunking
-│   │   ├── retrieval/           # Embedding generation, ChromaDB vector search
-│   │   └── generation/          # LLM answer generation, prompt construction
-│   ├── prompts.py               # Prompt templates
-│   └── data_storage.py         # Supabase feedback storage
+│   │   ├── loader, parser, chunker, embedding, searcher, retriever
 └── frontend/
     ├── index.html               # Landing page
     ├── chat.html                # Chat interface
@@ -65,7 +63,7 @@ techfilings/
 ### Prerequisites
 
 - Python 3.10+
-- [Ollama](https://ollama.com) with `llama3.2` model pulled
+- [Ollama](https://ollama.com) with `llama3.2` model pulled (Optional)
 - OpenAI API key (for embeddings)
 
 ### Installation

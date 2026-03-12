@@ -7,7 +7,7 @@ Exposes /api/query endpoint for the frontend.
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Optional
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # backend/
@@ -29,7 +29,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:5500",
         "http://127.0.0.1:5500",
-        "https://*.vercel.app",   # your Vercel frontend
+        "https://techfilings.vercel.app",   
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -59,7 +59,7 @@ class Citation(BaseModel):
 
 class QueryResponse(BaseModel):
     answer: str
-    citations: List[Citation]
+    citations: list[Citation]
 
 
 class FeedbackRequest(BaseModel):
