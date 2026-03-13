@@ -25,7 +25,10 @@ from openai import OpenAI
 from config import TOP_K, INPUT_CSV, OUTPUT_CSV, OPENAI_CHAT_MODEL
 from dotenv import load_dotenv
 load_dotenv()
-_eval_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompt", "eval_prompts.yaml")
+_eval_path = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "prompt", "eval_prompts.yaml"
+)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
@@ -74,34 +77,34 @@ def numeric_overlap(predicted: str, expected: str) -> float:
 # ── OpenAI judge ───────────────────────────────────────────────────────────────
 
 def llm_judge(question: str, answer: str, ground_truth: str, contexts: list[str]) -> dict:
-    """Use gpt-4o-mini to evaluate faithfulness and answer relevancy."""
     context_str = "\n---\n".join(contexts[:3]) if contexts else "No context available"
     
     with open(_eval_path) as f:
         _eval_prompts = yaml.safe_load(f)
     JUDGE_PROMPT = _eval_prompts["judge_prompt"]
-    prompt = JUDGE_PROMPT.format(
-            question=question,
-            context_str=context_str[:2000],
-            answer=answer,
-            ground_truth=ground_truth,
-        )
+    prompt = JUDGE_PROMPT\
+        .replace("{question}", question)\
+        .replace("{context_str}", context_str[:2000])\
+        .replace("{answer}", answer)\
+        .replace("{ground_truth}", ground_truth)
 
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
-            max_tokens=50,
+            max_tokens=150,
         )
         raw = response.choices[0].message.content.strip()
+        print(f"    [debug] raw={raw}")
+        raw = raw.replace("```json", "").replace("```", "").strip()
         scores = json.loads(raw)
         return {
             "faithfulness":     round(float(scores.get("faithfulness", 0)), 3),
             "answer_relevancy": round(float(scores.get("answer_relevancy", 0)), 3),
         }
     except Exception as e:
-        print(f"    [!] LLM judge failed: {e}")
+        print(f"    [!] LLM judge failed: {e}, raw={raw}")
         return {"faithfulness": None, "answer_relevancy": None}
 
 
@@ -143,6 +146,7 @@ def run_eval():
 
         elapsed  = round(time.time() - t0, 2)
         answer   = result["answer"]
+        print(f"    [debug] answer={answer[:100]}")
         contexts = [c.get("content", "") for c in result.get("citations", [])]
         n_overlap = numeric_overlap(answer, row["answer"])
 
