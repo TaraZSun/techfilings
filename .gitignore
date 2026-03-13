@@ -16,4 +16,3 @@ backend/data/filings/*.html
 data/**/*.json
 data/**/*.html
 data/qa_samples/*.csv
-backend/embeddings/chroma_db/
