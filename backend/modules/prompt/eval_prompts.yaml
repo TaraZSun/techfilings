@@ -111,5 +111,5 @@ judge_prompt: |
 
   GROUND TRUTH: {ground_truth}
 
-  Respond ONLY with valid JSON, no explanation:
-  {{"faithfulness": 0.0, "answer_relevancy": 0.0}}
+  Respond ONLY with a valid JSON object containing your scores. No explanation, no markdown, no extra text.
+  Example format: {"faithfulness": 0.8, "answer_relevancy": 0.9}

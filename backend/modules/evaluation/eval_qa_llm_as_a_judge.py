@@ -147,7 +147,7 @@ def run_eval():
         elapsed  = round(time.time() - t0, 2)
         answer   = result["answer"]
         print(f"    [debug] answer={answer[:100]}")
-        contexts = [c.get("content", "") for c in result.get("citations", [])]
+        contexts = [c.get("text", c.get("content", "")) for c in result.get("citations", [])]
         n_overlap = numeric_overlap(answer, row["answer"])
 
         print(f"  ✓ RAG: {elapsed}s | sources: {result.get('num_sources', 0)} | numeric_overlap: {n_overlap}")
@@ -163,10 +163,10 @@ def run_eval():
             "expected_answer":  row["answer"],
             "system_answer":    answer,
             "num_sources":      result.get("num_sources", 0),
-            "sources": ", ".join([
-                f"{c.get('company','')} {c.get('form_type','')} {c.get('period','')}"
-                for c in result.get("citations", [])
-            ]),
+            "source_contents": " || ".join([
+                    c.get("text", c.get("content", ""))
+                    for c in result.get("citations", [])
+                ]),
             "numeric_overlap":  n_overlap,
             "faithfulness":     scores["faithfulness"],
             "answer_relevancy": scores["answer_relevancy"],

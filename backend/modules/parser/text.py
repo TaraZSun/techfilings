@@ -11,7 +11,7 @@ from modules.parser.models import ParsedElement
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
-# 跳过这些 section 的内容（封面页、法律声明等无用内容）
+# Skip these sections' content (cover page, legal disclaimers, etc.)
 SKIP_SECTIONS = {
     "UNITED STATES SECURITIES AND EXCHANGE COMMISSION",
     "ADVANCED MICRO DEVICES, INC .",
@@ -91,9 +91,9 @@ def extract_text_elements(html: str) -> list[ParsedElement]:
         if SKIP_REGEX.match(text):
             continue
 
-        # 跳过太短的内容
-        if len(text) < 100:
+        if _is_noise(text):
             continue
+        
 
         # 去重：跳过已经出现过的文字
         text_key = text[:200]
@@ -111,18 +111,26 @@ def extract_text_elements(html: str) -> list[ParsedElement]:
 
 
 def _is_section_header(text: str, tag) -> bool:
-    """判断是否为章节标题"""
-    patterns = [
+    """Find section headers based on common patterns and formatting"""
+    standard_patterns = [
         r"^ITEM\s+\d+[A-Z]?\.",
         r"^PART\s+[IVX]+",
         r"^NOTE\s+\d+",
     ]
-    for pattern in patterns:
-        if re.match(pattern, text, re.IGNORECASE):
-            return True
+    if any(re.match(pattern, text, re.IGNORECASE) for pattern in standard_patterns):
+        return True
 
-    # 短文字 + 全大写
-    if len(text) < 100 and text.isupper():
+    # If text is short and bold, it might be a section header
+    is_bold = tag.find(["b","strong"]) is not None or "font-weight:bold" in str(tag.get('style', ''))
+    if is_bold and len(text) < 120:
         return True
 
     return False
+
+def _is_noise(text:str)->bool:
+    # segments only with numbers or punctuation
+    if re.match(r'^[0-9\.\-\s\(\)\$%,]+$', text):
+        return True
+    # too short and no alphabetic characters
+    if len(text)<10 and not any(word.isalpha() for word in text):
+        return True
