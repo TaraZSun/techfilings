@@ -23,12 +23,12 @@ START_YEAR = 2025
 END_YEAR = 2026
 
 # ── Embedding & LLM ───────────────────────────────────────────────────────
-USE_LOCAL_EMBEDDING = False
+USE_LOCAL_MODEL = True
 OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
 OPENAI_CHAT_MODEL = "gpt-4o-mini"
-OLLAMA_URL = "http://localhost:11434"
 EMBEDDING_MODEL = "nomic-embed-text"
 CHAT_MODEL = "llama3.2:latest"
+OLLAMA_CHAT_URL = "http://localhost:11434" 
 
 # ── Paths ──────────────────────────────────────────────────────────────────
 _BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

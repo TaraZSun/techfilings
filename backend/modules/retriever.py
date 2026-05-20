@@ -8,10 +8,9 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from modules.searcher import DocumentSearcher
-import openai
 import yaml
-from sentence_transformers import CrossEncoder
-from config import OPENAI_CHAT_MODEL, TOP_K
+from modules import model_client
+from config import TOP_K
 _path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompt", "retrieval_prompts.yaml")
 with open(_path) as f:
     _prompts = yaml.safe_load(f)
@@ -26,7 +25,29 @@ COMPANY_ALIASES = {
 class DocumentRetriever:
     def __init__(self):
         self.searcher = DocumentSearcher()
-        self.reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+        self.reranker = None  # disable reranking for cloud deploy to save resources
+        self.cross_encoder_model_name = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+    def _get_reranker(self):
+        if self.reranker is None:
+            # set up environment variables for Hugging Face model loading
+            if os.environ.get("HF.ENDPOINT"):
+                print("Using custom Hugging Face endpoint for CrossEncoder model.")
+
+            # allow offline loading if TRANSFORMERS_OFFLINE=1 is set
+            if os.getenv("TRANSFORMERS_OFFLINE") == "1":
+                print("Loading CrossEncoder model in offline mode.")
+            
+            try:
+                from sentence_transformers.cross_encoder import CrossEncoder
+                self.reranker = CrossEncoder(self.cross_encoder_model_name)
+            except Exception as e:
+                print(f"Failed to load CrossEncoder model: {e}")
+                self.reranker = None
+                raise
+
+        return self.reranker
+        
 
     def format_sources_for_prompt(self, search_results: list[dict]) -> str:
         context_parts = []
@@ -47,21 +68,16 @@ class DocumentRetriever:
 
         context = self.format_sources_for_prompt(search_results)
         prompt = ANSWER_PROMPT.format(context=context, query=query)
-
-        try:
-            client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-            response = client.chat.completions.create(
-                model=OPENAI_CHAT_MODEL,
+        
+        return model_client.ModelClient.chat(
                 messages=[
                     {"role": "system", "content": "You are a financial analyst assistant. Answer ONLY based on the provided sources. Do not infer, extrapolate, or add information not explicitly stated in the context. If the context is insufficient, say so."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0,
+                temperature=0.5,
                 max_tokens=1000,
             )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            return f"[Generation failed: {e}]"
+        
 
     def format_citations(self, search_results: list[dict]) -> list[dict]:
         citations = []
@@ -101,21 +117,24 @@ class DocumentRetriever:
         return found
     
     def rerank(self, query: str, search_results: list[dict], top_k: int) -> list[dict]:
-        if not search_results:
-            return search_results
-        
+        reranker = self._get_reranker()
+
+        if reranker is None:
+            print("Reranker model not available, skipping reranking.")
+            return search_results[:top_k]
+            # Prepare pairs for scoring
         pairs = [[query, result["text"]] for result in search_results]
-        scores = self.reranker.predict(pairs)
-        ranked = sorted(
-            zip(scores, search_results),
-            key=lambda x: x[0],
-            reverse=True
-        )
-        return [result for _, result in ranked[:top_k]]
-    
-    # def rerank(self, query: str, search_results: list[dict], top_k: int) -> list[dict]:
-    #     # reranking disabled for cloud deploy — sentence_transformers too heavy
-    #     return search_results[:top_k]
+        try:
+            scores = reranker.predict(pairs)
+            ranked = sorted(
+                zip(scores, search_results),
+                key=lambda x: x[0],
+                reverse=True
+            )
+            return [result for _, result in ranked[:top_k]]
+        except Exception as e:
+            print(f"Reranking failed: {e}")
+            return search_results[:top_k]
 
     def retrieve_and_answer(
         self,
@@ -146,9 +165,7 @@ class DocumentRetriever:
             "num_sources": len(citations),
         }
     def expand_query(self, query: str) -> str:
-        client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
+        return model_client.ModelClient.chat(
             messages=[{
                 "role": "user",
                 "content": f"Expand this financial query with relevant terminology and context for searching SEC filings. Return only the expanded query, no explanation.\n\nQuery: {query}"
@@ -156,4 +173,4 @@ class DocumentRetriever:
             temperature=0,
             max_tokens=150,
         )
-        return response.choices[0].message.content.strip()
+       

@@ -3,17 +3,14 @@ TechFilings - Searcher module
 """
 
 import os
-import requests
-from typing import List, Dict, Optional
+from typing import List, Dict
 import chromadb
 import sys
+from modules import model_client
 from rank_bm25 import BM25Okapi
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from openai import OpenAI
-from config import (EMBEDDING_MODEL,OLLAMA_URL,
-                            CHROMA_PERSIST_DIR, TOP_K,
-                            USE_LOCAL_EMBEDDING, 
-                            OPENAI_EMBEDDING_MODEL)
+from config import EMBEDDING_MODEL,CHROMA_PERSIST_DIR, TOP_K
+                           
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -36,20 +33,7 @@ class DocumentSearcher:
         self.bm25 = BM25Okapi(corpus)
 
     def get_query_embedding(self, query: str) -> list[float]:
-        if USE_LOCAL_EMBEDDING:
-            response = requests.post(
-                f"{OLLAMA_URL}/api/embeddings",
-                json={"model": EMBEDDING_MODEL, "prompt": query},
-                timeout=30
-            )
-            return response.json()["embedding"]
-        else:
-            client = OpenAI(api_key=OPENAI_API_KEY)
-            response = client.embeddings.create(
-                model=OPENAI_EMBEDDING_MODEL,
-                input=query
-            )
-            return response.data[0].embedding
+        return model_client.ModelClient.get_embeddings(query)
 
     def search(self, query, top_k=TOP_K, filter_ticker=None,
            filter_filing_type=None, filter_period=None):

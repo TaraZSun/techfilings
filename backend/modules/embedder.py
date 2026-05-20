@@ -10,18 +10,18 @@ import chromadb
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
-
+from modules import model_client
 import sys
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import (USE_LOCAL_EMBEDDING,  # noqa: E402
-                    OPENAI_EMBEDDING_MODEL, 
+from config import (OPENAI_EMBEDDING_MODEL,  # noqa: E402
                     EMBEDDING_MODEL, 
-                    OLLAMA_URL,
                     BATCH_SIZE, 
                     CHUNKS_PATH,
-                    CHROMA_PERSIST_DIR)
+                    CHROMA_PERSIST_DIR,
+                    USE_LOCAL_MODEL,
+                    OLLAMA_CHAT_URL)
 
 
 
@@ -29,7 +29,7 @@ from config import (USE_LOCAL_EMBEDDING,  # noqa: E402
 class DocumentEmbedder:
     def __init__(self, collection_name: str = "techfilings"):
         self.collection_name = collection_name
-        self.embedding_model = OPENAI_EMBEDDING_MODEL if not USE_LOCAL_EMBEDDING else EMBEDDING_MODEL
+        self.embedding_model = EMBEDDING_MODEL if USE_LOCAL_MODEL else OPENAI_EMBEDDING_MODEL
 
         # check Ollama if using local embedding
         self._check_ollama()
@@ -43,11 +43,11 @@ class DocumentEmbedder:
         )
 
     def _check_ollama(self):
-        if not USE_LOCAL_EMBEDDING:
+        if not USE_LOCAL_MODEL:
             print(f"[✓] Use OpenAI embedding: {OPENAI_EMBEDDING_MODEL}")
             return
         try:
-            r = requests.get(f"{OLLAMA_URL}/api/tags", timeout=5)
+            r = requests.get(f"{OLLAMA_CHAT_URL}/api/tags", timeout=5)
             models = [m["name"] for m in r.json().get("models", [])]
             if not any(EMBEDDING_MODEL in m for m in models):
                 print(f"{EMBEDDING_MODEL} not founs, please run ollama pull {EMBEDDING_MODEL}")
@@ -55,21 +55,7 @@ class DocumentEmbedder:
             print("Warning: Ollama is not working, please run 'ollama serve' and ensure it's accessible at the configured URL.")
 
     def get_embedding(self, text: str) -> list[float]:
-        if USE_LOCAL_EMBEDDING:
-            response = requests.post(
-                f"{OLLAMA_URL}/api/embeddings",
-                json={"model": EMBEDDING_MODEL, "prompt": text},
-                timeout=30
-            )
-            return response.json()["embedding"]
-        else:
-            
-            client = OpenAI(api_key=OPENAI_API_KEY)
-            response = client.embeddings.create(
-                model=OPENAI_EMBEDDING_MODEL,
-                input=text
-            )
-            return response.data[0].embedding
+        return model_client.ModelClient.get_embeddings(text)
         
 
     def get_embeddings_batch(self, texts: List[str], batch_size: int = BATCH_SIZE) -> List[List[float]]:
