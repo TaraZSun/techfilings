@@ -170,7 +170,8 @@ SUPABASE_KEY=your_supabase_key    # optional
 
 ```bash
 cd backend
-uvicorn main:app --reload --port 8001
+uvicorn main:app --reload --port 8001 
+# python main.py
 ```
 
 Serve the frontend via Live Server or any static file server, then open `frontend/index.html`.

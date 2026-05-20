@@ -5,7 +5,7 @@
 
 // ── Config ──────────────────────────────────────────────────────────────────
 const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-  ? "http://127.0.0.1:8001"
+  ? "http://127.0.0.1:8000"
   : "https://techfilings-production.up.railway.app"; // replace with your Railway URL after deploy
 
 // ── State ───────────────────────────────────────────────────────────────────
