@@ -16,4 +16,12 @@ backend/data/filings/*.html
 data/**/*.json
 data/**/*.html
 data/qa_samples/*.csv
+# ...except the chunk corpus: it is the input the deploy rebuilds the vector
+# index from on a fresh volume, so it has to ship with the repo (~10 MB).
+!data/processed/chunks.json
+# The Chroma index is NOT committed. Only chroma.sqlite3 was ever tracked,
+# never the HNSW segment files, which made every deployed index silently
+# return results from a handful of vectors. It lives on a Railway volume now
+# and is rebuilt by backend/bootstrap_index.py.
 backend/embeddings/
+CLAUDE.md 
